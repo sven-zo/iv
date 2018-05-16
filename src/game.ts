@@ -26,10 +26,10 @@ class Game {
   // }
 
   public initialise() {
-    console.log('Inititalising!');
+    console.log('[Game] Inititalising!');
     this.stage = new LoadingScreen();
     this.initialised = true;
-    console.log('Done!');
+    console.log('[Game] Done initialising!');
   }
 
   private gameLoop() {
