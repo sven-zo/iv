@@ -1,0 +1,3 @@
+interface Stage {
+  update(): void;
+}
