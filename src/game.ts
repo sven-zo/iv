@@ -19,12 +19,6 @@ class Game {
     this.gameLoop();
   }
 
-  // private timestamp() {
-  //   return window.performance && window.performance.now
-  //     ? window.performance.now()
-  //     : new Date().getTime();
-  // }
-
   public initialise() {
     console.log('[Game] Inititalising!');
     this.stage = new LoadingScreen();
@@ -32,9 +26,18 @@ class Game {
     console.log('[Game] Done initialising!');
   }
 
+  public showMainMenu() {
+    console.log('[Game] Main menu');
+    // this.stage = new MainMenu();
+    this.stage = new Level();
+  }
+
   private gameLoop() {
     if (this.initialised) {
       this.renderer.render(this.scene, this.camera as THREE.Camera);
+    }
+    if (this.stage) {
+      this.stage.update();
     }
     window.requestAnimationFrame(() => this.gameLoop());
   }

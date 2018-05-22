@@ -1,10 +1,16 @@
 class LoadingScreen implements Stage {
   private loadingText: HTMLDivElement;
   private loadingSubtitle: HTMLDivElement;
+  private loadingBox: HTMLDivElement;
   private game: Game;
-  private audioLoader: THREE.AudioLoader;
   private audioListener: THREE.AudioListener;
   private audio: THREE.Audio;
+  private progress: number;
+  private resources: Resources;
+  private isMusicPlaying: boolean;
+  private lastProgress: number = 0;
+  private state: string = 'loading';
+  private frames: number = 0;
 
   constructor() {
     this.loadingText = document.getElementById(
@@ -13,9 +19,9 @@ class LoadingScreen implements Stage {
     this.loadingSubtitle = document.getElementById(
       'loading-subtitle'
     ) as HTMLDivElement;
-    this.loadingText.innerText = 'Still loading...';
-    this.loadingSubtitle.innerText = 'Please wait!';
-
+    this.loadingBox = document.getElementById(
+      'loading-screen'
+    ) as HTMLDivElement;
     this.game = Game.getInstance();
     this.game.scene = new THREE.Scene();
     this.game.camera = new THREE.PerspectiveCamera(
@@ -24,55 +30,67 @@ class LoadingScreen implements Stage {
       0.1,
       1000
     );
+    this.game.scene.background = new THREE.Color('white');
+    this.isMusicPlaying = false;
     this.audioListener = new THREE.AudioListener();
     this.game.camera.add(this.audioListener);
     this.audio = new THREE.Audio(this.audioListener);
+    this.audio.setLoop(true);
     this.game.scene.add(this.audio);
-
-    this.game.scene.background = new THREE.Color('white');
-
-    //TODO: general loading thing en dan een lijst van dingen waar die mee bezig is in de subtitle (want hij laadt meerdere dingen tegelijk apparently)
-
-    this.audioLoader = new THREE.AudioLoader();
-    this.loadingText.innerText = 'Loading loading screen music...';
-    this.loadingSubtitle.innerText = 'Ironic, I know...';
-    console.log('loading ElementarySD');
-    this.audioLoader.load(
-      'assets/music/ElementarySD.mp3',
-      audioBuffer => {
-        console.log('ElementarySD.mp3 done loading');
-        this.audio.setBuffer(audioBuffer);
-        this.audio.play();
-      },
-      xhr => {
-        this.loadingText.innerText = `Loading loading screen music... (${Math.round(
-          xhr.loaded / xhr.total * 100
-        )}%)`;
-        this.loadingSubtitle.innerText = 'Ironic, I know...';
-      },
-      error => {
-        console.log('An error happened');
-      }
-    );
-
-    this.loadingText.innerText = 'Loading tunes...';
-    console.log('loading 500480_Press-Start.mp3');
-    this.audioLoader.load(
-      'assets/music/500480_Press-Start.mp3',
-      audioBuffer => {
-        console.log('500480_Press-Start.mp3 done loading');
-      },
-      xhr => {
-        this.loadingText.innerText = `Loading tunes... (${Math.round(
-          xhr.loaded / xhr.total * 100
-        )}%)`;
-        this.loadingSubtitle.innerText = 'Main menu tunes';
-      },
-      error => {
-        console.log('An error happened');
-      }
-    );
+    this.activateLoadingScreen();
   }
 
-  public update() {}
+  private activateLoadingScreen(): void {
+    this.resources = Resources.getInstance();
+    this.resources.setLoadingScreen(this);
+    this.resources.loadMain();
+  }
+
+  public setProgressInformation(loaded: number, total: number) {
+    const newProgress = Math.round(loaded / total * 100);
+    if (newProgress >= this.lastProgress) {
+      this.progress = newProgress;
+    }
+    this.lastProgress = newProgress;
+  }
+
+  public update() {
+    if (this.progress) {
+      this.loadingText.innerText = `Loading... (${this.progress}%)`;
+      this.loadingSubtitle.innerText = `${this.resources.musicEntities} of ${
+        this.resources.totalResources
+      } resources parsed`;
+      if (this.progress === 100) {
+        this.loadingText.innerText = 'Parsing resources...';
+        if (this.resources.musicEntities === this.resources.totalResources) {
+          this.loadingText.innerText = 'Done!';
+          this.state = 'exiting';
+        }
+      }
+    } else {
+      this.loadingText.innerText = `Loading...`;
+    }
+
+    if (this.state === 'exiting') {
+      if (this.frames < 50) {
+        this.frames++;
+        this.loadingBox.style.transform = `scale(${1 - this.frames / 50})`;
+        this.loadingBox.style.opacity = `${1 - this.frames / 50}`;
+        this.audio.setVolume(1 - this.frames / 50);
+      } else {
+        this.exit();
+      }
+    }
+
+    if (this.resources.getMusic('loadingScreen') && !this.isMusicPlaying) {
+      this.audio.setBuffer(this.resources.getMusic('loadingScreen').audio);
+      this.audio.play();
+      this.isMusicPlaying = true;
+    }
+  }
+
+  private exit() {
+    this.loadingBox.style.display = 'none';
+    this.game.showMainMenu();
+  }
 }

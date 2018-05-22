@@ -1,4 +1,4 @@
-class Menu implements Stage {
+class MainMenu implements Stage {
   // private game: Game = Game.getInstance();
   private game: Game;
 
@@ -6,6 +6,7 @@ class Menu implements Stage {
     this.game = Game.getInstance();
     // this.game = Game.getInstance();
     this.game.scene = new THREE.Scene();
+    this.game.scene.background = new THREE.Color('white');
     this.game.camera = new THREE.PerspectiveCamera(
       75,
       this.game.rendererWidth / this.game.rendererHeight,
@@ -18,4 +19,6 @@ class Menu implements Stage {
     this.game.scene.add(cube);
     this.game.camera.position.z = 5;
   }
+
+  update(): void {}
 }
