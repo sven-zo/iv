@@ -44,10 +44,12 @@ window.addEventListener('load', () => {
 class Level {
     constructor() {
         this.game = Game.getInstance();
+        this._resourceLoader = Resources.getInstance();
         this.game.scene = new THREE.Scene();
         this.game.scene.background = new THREE.Color('white');
         this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
         const axesHelper = new THREE.AxesHelper(5);
+        axesHelper.position.set(0, 0, 0);
         this.game.scene.add(axesHelper);
         LevelGenerator.generate().then(level => {
             console.log(level);
@@ -62,7 +64,11 @@ class Level {
                 cube.position.z = element.z;
                 this.game.scene.add(cube);
                 this.game.camera.position.z = 10;
+                console.log(cube);
             });
+            this._player = new Player();
+            this.game.scene.add(this._player.mesh);
+            this._player.setToStartPosition();
         });
     }
     update() { }
@@ -114,10 +120,10 @@ class LoadingScreen {
     update() {
         if (this.progress) {
             this.loadingText.innerText = `Loading... (${this.progress}%)`;
-            this.loadingSubtitle.innerText = `${this.resources.musicEntities} of ${this.resources.totalResources} resources parsed`;
+            this.loadingSubtitle.innerText = `${this.resources.loadedResources} of ${this.resources.totalResources} resources parsed`;
             if (this.progress === 100) {
                 this.loadingText.innerText = 'Parsing resources...';
-                if (this.resources.musicEntities === this.resources.totalResources) {
+                if (this.resources.loadedResources === this.resources.totalResources) {
                     this.loadingText.innerText = 'Done!';
                     this.state = 'exiting';
                 }
@@ -162,36 +168,21 @@ class MainMenu {
     }
     update() { }
 }
-class Music {
-    constructor(audio, name) {
-        this._audio = audio;
-        this._name = name;
-    }
-    get audio() {
-        return this._audio;
-    }
-    get name() {
-        return this._name;
-    }
-}
-class Progress {
-    constructor(loaded, total) {
-        this.loaded = loaded;
-        this.total = total;
-    }
-}
 class Resources {
     constructor() {
         this._music = [];
-        this.totalResources = 2;
+        this._fonts = [];
+        this.totalResources = 3;
     }
     setLoadingScreen(loadingScreen) {
         this.loadingScreen = loadingScreen;
     }
     loadMain() {
         this.audioLoader = new THREE.AudioLoader();
+        this.fontLoader = new THREE.FontLoader();
         this.addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
         this.addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
+        this.addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
     }
     addToAudioLoader(url, name) {
         this.audioLoader.load(url, (audioBuffer) => {
@@ -201,20 +192,86 @@ class Resources {
             console.log('[Audioloader] An error happened', error);
         });
     }
+    addToFontLoader(url, name) {
+        this.fontLoader.load(url, (font) => {
+            console.log('[FontLoader] Done loading: ', name);
+            let geometry = new THREE.TextGeometry('i', { font: font, size: 1, height: 0.25 });
+            this._fonts.push(new Font(font, geometry, name));
+        }, (progress) => {
+            this.setProgress(progress);
+        }, (error) => {
+            console.error('[FontLoader] An error occured', error);
+        });
+    }
     setProgress(progress) {
         this.loadingScreen.setProgressInformation(progress.loaded, progress.total);
     }
-    get musicEntities() {
-        return this._music.length;
+    get loadedResources() {
+        return this._music.length + this._fonts.length;
     }
     getMusic(name) {
         return this._music.filter(track => track.name === name)[0];
+    }
+    getFont(name) {
+        return this._fonts.filter(font => font.name === name)[0];
     }
     static getInstance() {
         if (!Resources.instance) {
             this.instance = new Resources();
         }
         return this.instance;
+    }
+}
+class Player {
+    get mesh() {
+        return this._mesh;
+    }
+    constructor() {
+        this._resourceLoader = Resources.getInstance();
+        this._geometry = this._resourceLoader.getFont('robotoItalic').geometry;
+        let material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        this._mesh = new THREE.Mesh(this._geometry, material);
+    }
+    setToStartPosition() {
+        this._mesh.position.x = -5;
+        this._mesh.position.y = -0.5;
+        this._mesh.position.z = 1;
+    }
+}
+class Progress {
+    constructor(loaded, total) {
+        this.loaded = loaded;
+        this.total = total;
+    }
+}
+class Resource {
+    get name() {
+        return this._name;
+    }
+    constructor(name) {
+        this._name = name;
+    }
+}
+class Font extends Resource {
+    get typeface() {
+        return this._typeface;
+    }
+    get geometry() {
+        return this._geometry;
+    }
+    constructor(typeface, geometry, name) {
+        super(name);
+        this._typeface = typeface;
+        this._geometry = geometry;
+    }
+}
+class Music extends Resource {
+    get audio() {
+        return this._audio;
+    }
+    constructor(audio, name) {
+        super(name);
+        this._audio = audio;
     }
 }
 //# sourceMappingURL=main.js.map
