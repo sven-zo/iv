@@ -30,6 +30,7 @@ class LoadingScreen implements Stage {
       0.1,
       1000
     );
+    
     this.game.scene.background = new THREE.Color('white');
     this.isMusicPlaying = false;
     this.audioListener = new THREE.AudioListener();

@@ -43,35 +43,45 @@ window.addEventListener('load', () => {
 });
 class Level {
     constructor() {
+        this._genetatedLevel = [];
         this.game = Game.getInstance();
         this._resourceLoader = Resources.getInstance();
         this.game.scene = new THREE.Scene();
         this.game.scene.background = new THREE.Color('white');
         this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
+        this.game.camera.position.z = 10;
         const axesHelper = new THREE.AxesHelper(5);
-        axesHelper.position.set(0, 0, 0);
         this.game.scene.add(axesHelper);
         LevelGenerator.generate().then(level => {
             console.log(level);
             level.forEach(element => {
                 const geometry = new THREE.BoxGeometry(4, 1, 1);
                 const material = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color('grey')
+                    color: new THREE.Color('grey'),
                 });
                 const cube = new THREE.Mesh(geometry, material);
                 cube.position.x = element.x;
                 cube.position.y = element.y;
                 cube.position.z = element.z;
+                cube.geometry.computeBoundingBox();
+                cube.geometry.boundingBox.setFromObject(cube);
                 this.game.scene.add(cube);
-                this.game.camera.position.z = 10;
-                console.log(cube);
+                this._genetatedLevel.push(cube);
             });
+            console.log(this._genetatedLevel);
             this._player = new Player();
             this.game.scene.add(this._player.mesh);
             this._player.setToStartPosition();
         });
     }
-    update() { }
+    syncCameraAndPlayerPosition() {
+        this.game.camera.position.x = this._player.mesh.position.x;
+        this.game.camera.position.y = this._player.mesh.position.y;
+    }
+    update() {
+        this.syncCameraAndPlayerPosition();
+        this._player.update();
+    }
 }
 class LevelGenerator {
     static generate() {
@@ -168,6 +178,12 @@ class MainMenu {
     }
     update() { }
 }
+class Progress {
+    constructor(loaded, total) {
+        this.loaded = loaded;
+        this.total = total;
+    }
+}
 class Resources {
     constructor() {
         this._music = [];
@@ -223,25 +239,77 @@ class Resources {
     }
 }
 class Player {
-    get mesh() {
-        return this._mesh;
-    }
     constructor() {
+        this._speed = 0.05;
         this._resourceLoader = Resources.getInstance();
+        this._game = Game.getInstance();
+        window.addEventListener('keydown', (e) => { this.keydownHandler(e); });
         this._geometry = this._resourceLoader.getFont('robotoItalic').geometry;
         let material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
         this._mesh = new THREE.Mesh(this._geometry, material);
+        this._boundingBox = new THREE.Box3;
+        this._behaviour = new Run(this);
+    }
+    get mesh() {
+        return this._mesh;
+    }
+    get speed() {
+        return this._speed;
+    }
+    get behaviour() {
+        return this._behaviour;
+    }
+    set behaviour(behaviour) {
+        this._behaviour = behaviour;
+    }
+    keydownHandler(e) {
+        if (e.key === ' ' && !(this._behaviour instanceof Jump)) {
+            this._behaviour = new Jump(this);
+        }
     }
     setToStartPosition() {
         this._mesh.position.x = -5;
         this._mesh.position.y = -0.5;
-        this._mesh.position.z = 1;
+    }
+    remove() {
+        this._game.scene.remove(this.mesh);
+    }
+    update() {
+        this._boundingBox.setFromObject(this._mesh);
+        this._behaviour.update();
     }
 }
-class Progress {
-    constructor(loaded, total) {
-        this.loaded = loaded;
-        this.total = total;
+class Die {
+    constructor(player) {
+        this.player = player;
+    }
+    update() {
+        this.player.remove();
+        console.warn('not implemented, removed player');
+    }
+}
+class Jump {
+    constructor(player) {
+        this.distance = 0;
+        this.height = 0.2;
+        this.player = player;
+    }
+    update() {
+        this.player.mesh.position.x += this.player.speed;
+        this.distance += this.player.speed;
+        this.player.mesh.position.y += this.height;
+        this.height = (-0.96 * Math.pow(this.distance, 2)) + (0.9 * this.distance);
+        if (this.player.mesh.position.y <= -0.5) {
+            this.player.behaviour = new Run(this.player);
+        }
+    }
+}
+class Run {
+    constructor(player) {
+        this.player = player;
+    }
+    update() {
+        this.player.mesh.position.x += this.player.speed;
     }
 }
 class Resource {
