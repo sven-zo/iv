@@ -50,6 +50,7 @@ class Player {
     }
 
     public remove() {
+        window.removeEventListener('keydown', (e) => { this.keydownHandler(e) })
         this._game.scene.remove(this.mesh);
     }
 

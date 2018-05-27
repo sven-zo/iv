@@ -272,6 +272,7 @@ class Player {
         this._mesh.position.y = -0.5;
     }
     remove() {
+        window.removeEventListener('keydown', (e) => { this.keydownHandler(e); });
         this._game.scene.remove(this.mesh);
     }
     update() {
@@ -290,16 +291,22 @@ class Die {
 }
 class Jump {
     constructor(player) {
-        this.distance = 0;
-        this.height = 0.2;
+        this._distance = 0;
+        this._height = 0.2;
         this.player = player;
+    }
+    calculateHeight(weightDistance, weightHeight) {
+        let a = 1 - weightDistance;
+        let b = weightHeight;
+        let x = this._distance;
+        return (-a * Math.pow(x, 2)) + (b * x);
     }
     update() {
         this.player.mesh.position.x += this.player.speed;
-        this.distance += this.player.speed;
-        this.player.mesh.position.y += this.height;
-        this.height = (-0.96 * Math.pow(this.distance, 2)) + (0.9 * this.distance);
-        if (this.player.mesh.position.y <= -0.5) {
+        this._distance += this.player.speed;
+        this.player.mesh.position.y += this._height;
+        this._height = this.calculateHeight(0.04, 0.9);
+        if (this.player.mesh.position.y < -0.5) {
             this.player.behaviour = new Run(this.player);
         }
     }
