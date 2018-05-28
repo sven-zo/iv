@@ -1,13 +1,15 @@
+//TODO: make resposible for removing stuff ass well or take away responsibility of addkng stuff
 class Level implements Stage {
   private game: Game;
   private level: any;
-  private _genetatedLevel: THREE.Mesh[] = []; 
-  private _resourceLoader: Resources; 
-  private _player: Player;  
+  private genetatedLevel: LevelCube[] = []; 
+  private resourceLoader: Resources; 
+  private player: Player;  
+  private collisionChecker: CollisionChecker;
 
   constructor() {
     this.game = Game.getInstance();
-    this._resourceLoader = Resources.getInstance(); 
+    this.resourceLoader = Resources.getInstance(); 
 
     this.game.scene = new THREE.Scene();
     this.game.scene.background = new THREE.Color('white');
@@ -25,42 +27,24 @@ class Level implements Stage {
     LevelGenerator.generate().then(level => {
       console.log(level);
       level.forEach(element => {
-        const geometry = new THREE.BoxGeometry(4, 1, 1);
-        const material = new THREE.MeshBasicMaterial({
-          color: new THREE.Color('grey'),
-        });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.x = element.x;
-        cube.position.y = element.y;
-        cube.position.z = element.z;
-        cube.geometry.computeBoundingBox();
-        cube.geometry.boundingBox.setFromObject(cube);
-        this.game.scene.add(cube);
-        this._genetatedLevel.push(cube);
-      });
-
-      console.log(this._genetatedLevel); //.geometry.vertices  
-        this._player = new Player(); 
-        this.game.scene.add(this._player.mesh); 
-        this._player.setToStartPosition(); 
+        let cube = new LevelCube(element.x, element.y, element.z); 
+        this.game.scene.add(cube.mesh);
+        this.genetatedLevel.push(cube);
+      }); 
+        this.player = new Player(-5, -0.5, 1);
+        this.game.scene.add(this.player.mesh); 
+        this.collisionChecker = new CollisionChecker(this.player); 
     });
   }
 
-  //TODO: add collision
-  //collision 
-    //intersectsBox === true 
-      // upperFaceCube === true
-        //land / switch to run
-      //die
-    //do nothing 
-
-  syncCameraAndPlayerPosition() {
-    this.game.camera.position.x = this._player.mesh.position.x; 
-    this.game.camera.position.y = this._player.mesh.position.y; 
+  private syncCameraAndPlayerPosition(): void {
+    this.game.camera.position.x = this.player.position.x; 
+    this.game.camera.position.y = this.player.position.y; 
   }
 
-  update(): void {
+  public update(): void {
+    this.collisionChecker.checkPlayerCube(this.genetatedLevel); 
     this.syncCameraAndPlayerPosition(); 
-    this._player.update();
+    this.player.update();
   }
 }

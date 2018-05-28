@@ -1,4 +1,57 @@
 "use strict";
+class CollisionChecker {
+    constructor(player) {
+        this._player = player;
+    }
+    predictedCollisionPlayerCube(cube) {
+        if (!(this._player.behaviour instanceof Jump)) {
+            return;
+        }
+        const jump = this._player.behaviour;
+        const cubeTop = cube.upperFace[0].y;
+        const cubeXMax = cube.upperFace.reduce((previous, current) => { return previous.x > current.x ? previous : current; }).x;
+        const cubeXMin = cube.upperFace.reduce((previous, current) => { return previous.x < current.x ? previous : current; }).x;
+        const cubeZMax = cube.upperFace.reduce((previous, current) => { return previous.z > current.z ? previous : current; }).z;
+        const cubeZMin = cube.upperFace.reduce((previous, current) => { return previous.z < current.z ? previous : current; }).z;
+        const arcGeo = this._player.behaviour.arc.geometry;
+        const moreSpecificPoints = arcGeo.vertices.map((point, index, array) => {
+            if (index + 1 < array.length) {
+                return new THREE.LineCurve3(array[index], array[index + 1]).getPoints();
+            }
+        });
+        const points = moreSpecificPoints.reduce((previous, current, index, array) => {
+            if (previous && current) {
+                return previous.concat(current);
+            }
+            else if (previous && !current) {
+                let skippedArray = array[0];
+                return previous.concat(skippedArray);
+            }
+        });
+        points.forEach((point) => {
+            if (point.y <= cubeTop + 0.1 && point.y >= cubeTop - 0.1 &&
+                point.x <= cubeXMax && point.x >= cubeXMin &&
+                point.z <= cubeZMax && point.z >= cubeZMin) {
+                jump.cancelPosition = point;
+                this._lastPlayerCubeHit = cube;
+                console.log('lololol');
+            }
+        });
+    }
+    checkPlayerCube(genetatedLevel) {
+        const currentCheck = genetatedLevel.filter((cube) => {
+            if (cube.position.x > this._player.position.x - 12 && cube.position.x < this._player.position.x + 12) {
+                return cube;
+            }
+        });
+        currentCheck.forEach((cube) => {
+            this.predictedCollisionPlayerCube(cube);
+            if (this._player.boundingBox.intersectsBox(cube.boundingBox) && cube != this._lastPlayerCubeHit) {
+                return this._player.behaviour = new Die(this._player);
+            }
+        });
+    }
+}
 class Game {
     constructor() {
         this.rendererWidth = window.innerWidth - 10;
@@ -43,9 +96,9 @@ window.addEventListener('load', () => {
 });
 class Level {
     constructor() {
-        this._genetatedLevel = [];
+        this.genetatedLevel = [];
         this.game = Game.getInstance();
-        this._resourceLoader = Resources.getInstance();
+        this.resourceLoader = Resources.getInstance();
         this.game.scene = new THREE.Scene();
         this.game.scene.background = new THREE.Color('white');
         this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
@@ -55,32 +108,23 @@ class Level {
         LevelGenerator.generate().then(level => {
             console.log(level);
             level.forEach(element => {
-                const geometry = new THREE.BoxGeometry(4, 1, 1);
-                const material = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color('grey'),
-                });
-                const cube = new THREE.Mesh(geometry, material);
-                cube.position.x = element.x;
-                cube.position.y = element.y;
-                cube.position.z = element.z;
-                cube.geometry.computeBoundingBox();
-                cube.geometry.boundingBox.setFromObject(cube);
-                this.game.scene.add(cube);
-                this._genetatedLevel.push(cube);
+                let cube = new LevelCube(element.x, element.y, element.z);
+                this.game.scene.add(cube.mesh);
+                this.genetatedLevel.push(cube);
             });
-            console.log(this._genetatedLevel);
-            this._player = new Player();
-            this.game.scene.add(this._player.mesh);
-            this._player.setToStartPosition();
+            this.player = new Player(-5, -0.5, 1);
+            this.game.scene.add(this.player.mesh);
+            this.collisionChecker = new CollisionChecker(this.player);
         });
     }
     syncCameraAndPlayerPosition() {
-        this.game.camera.position.x = this._player.mesh.position.x;
-        this.game.camera.position.y = this._player.mesh.position.y;
+        this.game.camera.position.x = this.player.position.x;
+        this.game.camera.position.y = this.player.position.y;
     }
     update() {
+        this.collisionChecker.checkPlayerCube(this.genetatedLevel);
         this.syncCameraAndPlayerPosition();
-        this._player.update();
+        this.player.update();
     }
 }
 class LevelGenerator {
@@ -88,7 +132,7 @@ class LevelGenerator {
         return new Promise((resolve, reject) => {
             const level = [];
             const levelLength = Math.random() * 500;
-            for (let i = 0; i < levelLength; i++) {
+            for (let i = 0; i < levelLength; i += 1.5) {
                 level.push({ x: i, y: i, z: 1 });
             }
             resolve(level);
@@ -238,20 +282,69 @@ class Resources {
         return this.instance;
     }
 }
-class Player {
-    constructor() {
-        this._speed = 0.05;
-        this._resourceLoader = Resources.getInstance();
-        this._game = Game.getInstance();
-        window.addEventListener('keydown', (e) => { this.keydownHandler(e); });
-        this._geometry = this._resourceLoader.getFont('robotoItalic').geometry;
-        let material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        this._mesh = new THREE.Mesh(this._geometry, material);
-        this._boundingBox = new THREE.Box3;
-        this._behaviour = new Run(this);
-    }
+class GameObject {
     get mesh() {
         return this._mesh;
+    }
+    get boundingBox() {
+        return this._boundingBox;
+    }
+    get position() {
+        return this._mesh.position;
+    }
+    get upperFace() {
+        return this._upperFace;
+    }
+    get bottomFace() {
+        return this._bottomFace;
+    }
+    constructor(geometry, material, startPosition) {
+        this._game = Game.getInstance();
+        this._mesh = new THREE.Mesh(geometry, material);
+        this.toPosition(startPosition.x, startPosition.y, startPosition.z);
+        this._mesh.geometry.computeBoundingBox();
+        this._boundingBox = this._mesh.geometry.boundingBox.setFromObject(this._mesh);
+        this._upperFace = this.computeHorizontalFace(true);
+        this._bottomFace = this.computeHorizontalFace(false);
+    }
+    toPosition(x, y, z) {
+        this._mesh.position.x = x;
+        this._mesh.position.y = y;
+        this._mesh.position.z = z;
+    }
+    computeHorizontalFace(upper) {
+        let minX = this._boundingBox.min.x;
+        let minY = this._boundingBox.min.y;
+        let minZ = this._boundingBox.min.z;
+        let maxX = this._boundingBox.max.x;
+        let maxY = this._boundingBox.max.y;
+        let maxZ = this._boundingBox.max.z;
+        let y = upper ? maxY : minY;
+        let face = [];
+        face.push(new THREE.Vector3(minX, y, maxZ), new THREE.Vector3(minX, y, minZ), new THREE.Vector3(maxX, y, minZ), new THREE.Vector3(maxX, y, maxZ));
+        return face;
+    }
+    update() {
+        this._boundingBox.setFromObject(this._mesh);
+        this._upperFace = this.computeHorizontalFace(true);
+        this._bottomFace = this.computeHorizontalFace(false);
+    }
+    remove() {
+        this._game.scene.remove(this._mesh);
+    }
+}
+class LevelCube extends GameObject {
+    constructor(x, y, z) {
+        super(new THREE.BoxGeometry(4, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+    }
+}
+class Player extends GameObject {
+    constructor(x, y, z) {
+        super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0xffff00 }), new THREE.Vector3(x, y, z));
+        this._speed = 0.05;
+        this._keydownCb = (e) => { this.keydownHandler(e); };
+        window.addEventListener('keydown', this._keydownCb);
+        this._behaviour = new Run(this);
     }
     get speed() {
         return this._speed;
@@ -267,16 +360,12 @@ class Player {
             this._behaviour = new Jump(this);
         }
     }
-    setToStartPosition() {
-        this._mesh.position.x = -5;
-        this._mesh.position.y = -0.5;
-    }
     remove() {
-        window.removeEventListener('keydown', (e) => { this.keydownHandler(e); });
-        this._game.scene.remove(this.mesh);
+        super.remove();
+        window.removeEventListener('keydown', this._keydownCb);
     }
     update() {
-        this._boundingBox.setFromObject(this._mesh);
+        super.update();
         this._behaviour.update();
     }
 }
@@ -293,24 +382,57 @@ class Jump {
     constructor(player) {
         this._distance = 0;
         this._height = 0.2;
+        this._canceled = false;
         this.player = player;
+        this._arc = this.generateArc();
+        Game.getInstance().scene.add(this._arc);
     }
-    calculateHeight(weightDistance, weightHeight) {
-        let a = 1 - weightDistance;
-        let b = weightHeight;
-        let x = this._distance;
+    get arc() {
+        return this._arc;
+    }
+    get cancelPosition() {
+        return this._cancelPosition;
+    }
+    set cancelPosition(position) {
+        this._cancelPosition = position;
+    }
+    calculateHeight(x = this._distance) {
+        let a = 1 - Jump.WEIGHT_DISTANCE;
+        let b = Jump.WEIGHT_HEIGHT;
         return (-a * Math.pow(x, 2)) + (b * x);
     }
-    update() {
-        this.player.mesh.position.x += this.player.speed;
-        this._distance += this.player.speed;
-        this.player.mesh.position.y += this._height;
-        this._height = this.calculateHeight(0.04, 0.9);
-        if (this.player.mesh.position.y < -0.5) {
+    generateArc() {
+        const arc = new THREE.Path();
+        arc.absellipse(this.player.position.x + 1, this.player.position.y, 0.6, 2.8, Math.PI, 2 * Math.PI, true, 0);
+        const points2D = arc.getPoints();
+        const points3D = points2D.map((point) => { return new THREE.Vector3(point.x, point.y, this.player.position.z); });
+        const geometry = new THREE.Geometry().setFromPoints(points3D);
+        const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+        return new THREE.Line(geometry, material);
+    }
+    cancel() {
+        if (!this._cancelPosition) {
+            return;
+        }
+        if (this._cancelPosition.y + 0.15 >= this.player.position.y && this._cancelPosition.y - 0.15 <= this.player.position.y) {
+            this._canceled = true;
+            console.log(this._cancelPosition, this.player.position);
             this.player.behaviour = new Run(this.player);
         }
     }
+    update() {
+        if (this._canceled) {
+            return;
+        }
+        this.cancel();
+        this.player.position.x += this.player.speed;
+        this._distance += this.player.speed;
+        this.player.position.y += this._height;
+        this._height = this.calculateHeight();
+    }
 }
+Jump.WEIGHT_DISTANCE = 0.04;
+Jump.WEIGHT_HEIGHT = 0.9;
 class Run {
     constructor(player) {
         this.player = player;
