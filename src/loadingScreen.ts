@@ -41,7 +41,7 @@ class LoadingScreen implements Stage {
     this.activateLoadingScreen();
   }
 
-  private activateLoadingScreen(): void {
+  private activateLoadingScreen() {
     this.resources = Resources.getInstance();
     this.resources.setLoadingScreen(this);
     this.resources.loadMain();

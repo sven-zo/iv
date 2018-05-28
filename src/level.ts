@@ -1,4 +1,3 @@
-//TODO: make resposible for removing stuff ass well or take away responsibility of addkng stuff
 class Level implements Stage {
   private game: Game;
   private level: any;
@@ -28,11 +27,9 @@ class Level implements Stage {
       console.log(level);
       level.forEach(element => {
         let cube = new LevelCube(element.x, element.y, element.z); 
-        this.game.scene.add(cube.mesh);
         this.genetatedLevel.push(cube);
       }); 
         this.player = new Player(-5, -0.5, 1);
-        this.game.scene.add(this.player.mesh); 
         this.collisionChecker = new CollisionChecker(this.player); 
     });
   }

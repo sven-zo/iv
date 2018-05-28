@@ -34,7 +34,6 @@ class CollisionChecker {
                 point.z <= cubeZMax && point.z >= cubeZMin) {
                 jump.cancelPosition = point;
                 this._lastPlayerCubeHit = cube;
-                console.log('lololol');
             }
         });
     }
@@ -109,11 +108,9 @@ class Level {
             console.log(level);
             level.forEach(element => {
                 let cube = new LevelCube(element.x, element.y, element.z);
-                this.game.scene.add(cube.mesh);
                 this.genetatedLevel.push(cube);
             });
             this.player = new Player(-5, -0.5, 1);
-            this.game.scene.add(this.player.mesh);
             this.collisionChecker = new CollisionChecker(this.player);
         });
     }
@@ -306,6 +303,7 @@ class GameObject {
         this._boundingBox = this._mesh.geometry.boundingBox.setFromObject(this._mesh);
         this._upperFace = this.computeHorizontalFace(true);
         this._bottomFace = this.computeHorizontalFace(false);
+        this._game.scene.add(this._mesh);
     }
     toPosition(x, y, z) {
         this._mesh.position.x = x;
@@ -379,13 +377,15 @@ class Die {
     }
 }
 class Jump {
-    constructor(player) {
+    constructor(player, visibleArc) {
         this._distance = 0;
         this._height = 0.2;
         this._canceled = false;
         this.player = player;
         this._arc = this.generateArc();
-        Game.getInstance().scene.add(this._arc);
+        if (visibleArc) {
+            Game.getInstance().scene.add(this._arc);
+        }
     }
     get arc() {
         return this._arc;
@@ -396,9 +396,10 @@ class Jump {
     set cancelPosition(position) {
         this._cancelPosition = position;
     }
-    calculateHeight(x = this._distance) {
-        let a = 1 - Jump.WEIGHT_DISTANCE;
-        let b = Jump.WEIGHT_HEIGHT;
+    calculateHeight(weight_distance, weight_height) {
+        let a = 1 - weight_distance;
+        let b = weight_height;
+        let x = this._distance;
         return (-a * Math.pow(x, 2)) + (b * x);
     }
     generateArc() {
@@ -416,7 +417,6 @@ class Jump {
         }
         if (this._cancelPosition.y + 0.15 >= this.player.position.y && this._cancelPosition.y - 0.15 <= this.player.position.y) {
             this._canceled = true;
-            console.log(this._cancelPosition, this.player.position);
             this.player.behaviour = new Run(this.player);
         }
     }
@@ -428,11 +428,9 @@ class Jump {
         this.player.position.x += this.player.speed;
         this._distance += this.player.speed;
         this.player.position.y += this._height;
-        this._height = this.calculateHeight();
+        this._height = this.calculateHeight(0.04, 0.9);
     }
 }
-Jump.WEIGHT_DISTANCE = 0.04;
-Jump.WEIGHT_HEIGHT = 0.9;
 class Run {
     constructor(player) {
         this.player = player;
