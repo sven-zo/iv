@@ -1,9 +1,14 @@
 class Level implements Stage {
   private game: Game;
   private level: any;
+  private genetatedLevel: LevelCube[] = []; 
+  private resourceLoader: Resources; 
+  private player: Player;  
+  private collisionChecker: CollisionChecker;
 
   constructor() {
     this.game = Game.getInstance();
+    this.resourceLoader = Resources.getInstance(); 
 
     this.game.scene = new THREE.Scene();
     this.game.scene.background = new THREE.Color('white');
@@ -13,7 +18,7 @@ class Level implements Stage {
       0.1,
       1000
     );
-
+    this.game.camera.position.z = 10;
     // LevelGenerator.generate().then(level => (this.level = level));
     const axesHelper = new THREE.AxesHelper(5);
     this.game.scene.add(axesHelper);
@@ -21,19 +26,22 @@ class Level implements Stage {
     LevelGenerator.generate().then(level => {
       console.log(level);
       level.forEach(element => {
-        const geometry = new THREE.BoxGeometry(4, 1, 1);
-        const material = new THREE.MeshBasicMaterial({
-          color: new THREE.Color('grey')
-        });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.x = element.x;
-        cube.position.y = element.y;
-        cube.position.z = element.z;
-        this.game.scene.add(cube);
-        this.game.camera.position.z = 10;
-      });
+        let cube = new LevelCube(element.x, element.y, element.z); 
+        this.genetatedLevel.push(cube);
+      }); 
+        this.player = new Player(-5, -0.5, 1);
+        this.collisionChecker = new CollisionChecker(this.player); 
     });
   }
 
-  update(): void {}
+  private syncCameraAndPlayerPosition(): void {
+    this.game.camera.position.x = this.player.position.x; 
+    this.game.camera.position.y = this.player.position.y; 
+  }
+
+  public update(): void {
+    this.collisionChecker.checkPlayerCube(this.genetatedLevel); 
+    this.syncCameraAndPlayerPosition(); 
+    this.player.update();
+  }
 }

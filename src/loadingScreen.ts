@@ -30,6 +30,7 @@ class LoadingScreen implements Stage {
       0.1,
       1000
     );
+    
     this.game.scene.background = new THREE.Color('white');
     this.isMusicPlaying = false;
     this.audioListener = new THREE.AudioListener();
@@ -40,7 +41,7 @@ class LoadingScreen implements Stage {
     this.activateLoadingScreen();
   }
 
-  private activateLoadingScreen(): void {
+  private activateLoadingScreen() {
     this.resources = Resources.getInstance();
     this.resources.setLoadingScreen(this);
     this.resources.loadMain();
@@ -57,12 +58,13 @@ class LoadingScreen implements Stage {
   public update() {
     if (this.progress) {
       this.loadingText.innerText = `Loading... (${this.progress}%)`;
-      this.loadingSubtitle.innerText = `${this.resources.musicEntities} of ${
+      this.loadingSubtitle.innerText = `${this.resources.loadedResources} of ${
         this.resources.totalResources
       } resources parsed`;
       if (this.progress === 100) {
         this.loadingText.innerText = 'Parsing resources...';
-        if (this.resources.musicEntities === this.resources.totalResources) {
+
+        if (this.resources.loadedResources === this.resources.totalResources) {
           this.loadingText.innerText = 'Done!';
           this.state = 'exiting';
         }
