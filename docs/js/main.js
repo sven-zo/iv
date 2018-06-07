@@ -1,91 +1,51 @@
 "use strict";
-class CollisionChecker {
-    constructor(player) {
-        this._player = player;
-    }
-    predictedCollisionPlayerCube(cube) {
-        if (!(this._player.behaviour instanceof Jump)) {
-            return;
-        }
-        const jump = this._player.behaviour;
-        const cubeTop = cube.upperFace[0].y;
-        const cubeXMax = cube.upperFace.reduce((previous, current) => { return previous.x > current.x ? previous : current; }).x;
-        const cubeXMin = cube.upperFace.reduce((previous, current) => { return previous.x < current.x ? previous : current; }).x;
-        const cubeZMax = cube.upperFace.reduce((previous, current) => { return previous.z > current.z ? previous : current; }).z;
-        const cubeZMin = cube.upperFace.reduce((previous, current) => { return previous.z < current.z ? previous : current; }).z;
-        const arcGeo = this._player.behaviour.arc.geometry;
-        const moreSpecificPoints = arcGeo.vertices.map((point, index, array) => {
-            if (index + 1 < array.length) {
-                return new THREE.LineCurve3(array[index], array[index + 1]).getPoints();
-            }
-        });
-        const points = moreSpecificPoints.reduce((previous, current, index, array) => {
-            if (previous && current) {
-                return previous.concat(current);
-            }
-            else if (previous && !current) {
-                let skippedArray = array[0];
-                return previous.concat(skippedArray);
-            }
-        });
-        points.forEach((point) => {
-            if (point.y <= cubeTop + 0.1 && point.y >= cubeTop - 0.1 &&
-                point.x <= cubeXMax && point.x >= cubeXMin &&
-                point.z <= cubeZMax && point.z >= cubeZMin) {
-                jump.cancelPosition = point;
-                this._lastPlayerCubeHit = cube;
-            }
-        });
-    }
-    checkPlayerCube(genetatedLevel) {
-        const currentCheck = genetatedLevel.filter((cube) => {
-            if (cube.position.x > this._player.position.x - 12 && cube.position.x < this._player.position.x + 12) {
-                return cube;
-            }
-        });
-        currentCheck.forEach((cube) => {
-            this.predictedCollisionPlayerCube(cube);
-            if (this._player.boundingBox.intersectsBox(cube.boundingBox) && cube != this._lastPlayerCubeHit) {
-                return this._player.behaviour = new Die(this._player);
-            }
-        });
-    }
-}
 class Game {
     constructor() {
         this.rendererWidth = window.innerWidth - 10;
         this.rendererHeight = window.innerHeight - 10;
-        this.initialised = false;
-        this.renderer = new THREE.WebGLRenderer();
-        this.renderer.setSize(this.rendererWidth, this.rendererHeight);
-        document.body.appendChild(this.renderer.domElement);
-        console.log('iv');
-        this.gameLoop();
+        this.debugMode = false;
+        this._initialised = false;
+        this._renderer = new THREE.WebGLRenderer();
+        this._renderer.setSize(this.rendererWidth, this.rendererHeight);
+        document.body.appendChild(this._renderer.domElement);
+    }
+    get scene() {
+        return this._scene;
+    }
+    set scene(scene) {
+        this._scene = scene;
+    }
+    get camera() {
+        return this._camera;
+    }
+    set camera(camera) {
+        this._camera = camera;
     }
     initialise() {
-        console.log('[Game] Inititalising!');
+        console.log('[Game.initialise] Initialising!');
         this.stage = new LoadingScreen();
-        this.initialised = true;
-        console.log('[Game] Done initialising!');
+        this._initialised = true;
+        console.log('[Game.initialise] Done initialising!');
+        console.log('iv');
+        this._gameLoop();
     }
-    showMainMenu() {
-        console.log('[Game] Main menu');
-        this.stage = new Level();
+    set stage(stage) {
+        this._stage = stage;
     }
-    gameLoop() {
-        if (this.initialised) {
-            this.renderer.render(this.scene, this.camera);
+    _gameLoop() {
+        if (this._initialised) {
+            this._renderer.render(this._scene, this._camera);
         }
-        if (this.stage) {
-            this.stage.update();
+        if (this._stage) {
+            this._stage.update();
         }
-        window.requestAnimationFrame(() => this.gameLoop());
+        window.requestAnimationFrame(() => this._gameLoop());
     }
     static getInstance() {
-        if (!Game.instance) {
-            this.instance = new Game();
+        if (!Game._instance) {
+            this._instance = new Game();
         }
-        return this.instance;
+        return this._instance;
     }
 }
 window.addEventListener('load', () => {
@@ -93,131 +53,43 @@ window.addEventListener('load', () => {
     const g = Game.getInstance();
     g.initialise();
 });
-class Level {
-    constructor() {
-        this.genetatedLevel = [];
-        this.game = Game.getInstance();
-        this.resourceLoader = Resources.getInstance();
-        this.game.scene = new THREE.Scene();
-        this.game.scene.background = new THREE.Color('white');
-        this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
-        this.game.camera.position.z = 10;
-        const axesHelper = new THREE.AxesHelper(5);
-        this.game.scene.add(axesHelper);
-        LevelGenerator.generate().then(level => {
-            console.log(level);
-            level.forEach(element => {
-                let cube = new LevelCube(element.x, element.y, element.z);
-                this.genetatedLevel.push(cube);
-            });
-            this.player = new Player(-5, -0.5, 1);
-            this.collisionChecker = new CollisionChecker(this.player);
-        });
-    }
-    syncCameraAndPlayerPosition() {
-        this.game.camera.position.x = this.player.position.x;
-        this.game.camera.position.y = this.player.position.y;
-    }
-    update() {
-        this.collisionChecker.checkPlayerCube(this.genetatedLevel);
-        this.syncCameraAndPlayerPosition();
-        this.player.update();
-    }
-}
 class LevelGenerator {
-    static generate() {
-        return new Promise((resolve, reject) => {
-            const level = [];
-            const levelLength = Math.random() * 500;
-            for (let i = 0; i < levelLength; i += 1.5) {
-                level.push({ x: i, y: i, z: 1 });
-            }
-            resolve(level);
-        });
-    }
-}
-class LoadingScreen {
-    constructor() {
-        this.lastProgress = 0;
-        this.state = 'loading';
-        this.frames = 0;
-        this.loadingText = document.getElementById('loading-text');
-        this.loadingSubtitle = document.getElementById('loading-subtitle');
-        this.loadingBox = document.getElementById('loading-screen');
-        this.game = Game.getInstance();
-        this.game.scene = new THREE.Scene();
-        this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
-        this.game.scene.background = new THREE.Color('white');
-        this.isMusicPlaying = false;
-        this.audioListener = new THREE.AudioListener();
-        this.game.camera.add(this.audioListener);
-        this.audio = new THREE.Audio(this.audioListener);
-        this.audio.setLoop(true);
-        this.game.scene.add(this.audio);
-        this.activateLoadingScreen();
-    }
-    activateLoadingScreen() {
-        this.resources = Resources.getInstance();
-        this.resources.setLoadingScreen(this);
-        this.resources.loadMain();
-    }
-    setProgressInformation(loaded, total) {
-        const newProgress = Math.round(loaded / total * 100);
-        if (newProgress >= this.lastProgress) {
-            this.progress = newProgress;
-        }
-        this.lastProgress = newProgress;
-    }
-    update() {
-        if (this.progress) {
-            this.loadingText.innerText = `Loading... (${this.progress}%)`;
-            this.loadingSubtitle.innerText = `${this.resources.loadedResources} of ${this.resources.totalResources} resources parsed`;
-            if (this.progress === 100) {
-                this.loadingText.innerText = 'Parsing resources...';
-                if (this.resources.loadedResources === this.resources.totalResources) {
-                    this.loadingText.innerText = 'Done!';
-                    this.state = 'exiting';
-                }
-            }
-        }
-        else {
-            this.loadingText.innerText = `Loading...`;
-        }
-        if (this.state === 'exiting') {
-            if (this.frames < 50) {
-                this.frames++;
-                this.loadingBox.style.transform = `scale(${1 - this.frames / 50})`;
-                this.loadingBox.style.opacity = `${1 - this.frames / 50}`;
-                this.audio.setVolume(1 - this.frames / 50);
+    static generateChunk(startingXCoords, startingYCoords) {
+        const chunk = [];
+        const chunkLength = 20;
+        const startingSlice = new Slice(startingXCoords, startingYCoords, 1, 4);
+        for (let i = startingXCoords; i < chunkLength + startingXCoords; i++) {
+            if (i === startingXCoords) {
+                chunk.push(this._generateSlice(startingSlice));
             }
             else {
-                this.exit();
+                chunk.push(this._generateSlice(chunk[chunk.length - 1]));
             }
         }
-        if (this.resources.getMusic('loadingScreen') && !this.isMusicPlaying) {
-            this.audio.setBuffer(this.resources.getMusic('loadingScreen').audio);
-            this.audio.play();
-            this.isMusicPlaying = true;
-        }
+        return chunk;
     }
-    exit() {
-        this.loadingBox.style.display = 'none';
-        this.game.showMainMenu();
+    static _generateSlice(previousSlice) {
+        const s = previousSlice;
+        const n = Math.floor(Math.random() * 3);
+        switch (n) {
+            case 0:
+                return new Slice(s.x + 1, s.y + 1, 1, 4);
+            case 1:
+                return new Slice(s.x + 1, s.y - 1, 1, 4);
+            case 2:
+                return new Slice(s.x + 1, s.y, 1, 4);
+        }
+        return new Slice(s.x + 1, s.y, 1, 4);
     }
 }
-class MainMenu {
-    constructor() {
-        this.game = Game.getInstance();
-        this.game.scene = new THREE.Scene();
-        this.game.scene.background = new THREE.Color('white');
-        this.game.camera = new THREE.PerspectiveCamera(75, this.game.rendererWidth / this.game.rendererHeight, 0.1, 1000);
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cube = new THREE.Mesh(geometry, material);
-        this.game.scene.add(cube);
-        this.game.camera.position.z = 5;
+class Physics {
+    constructor(level, player) {
+        this._level = level;
+        this._player = player;
     }
-    update() { }
+    calculate() {
+        const ticksPerUpdate = 1;
+    }
 }
 class Progress {
     constructor(loaded, total) {
@@ -227,41 +99,55 @@ class Progress {
 }
 class Resources {
     constructor() {
+        this._audioLoader = new THREE.AudioLoader();
+        this._fontLoader = new THREE.FontLoader();
         this._music = [];
         this._fonts = [];
+        this._debugMode = false;
         this.totalResources = 3;
+        this._game = Game.getInstance();
+        this._debugMode = this._game.debugMode;
     }
-    setLoadingScreen(loadingScreen) {
-        this.loadingScreen = loadingScreen;
+    set loadingScreen(loadingScreen) {
+        this._loadingScreen = loadingScreen;
     }
     loadMain() {
-        this.audioLoader = new THREE.AudioLoader();
-        this.fontLoader = new THREE.FontLoader();
-        this.addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
-        this.addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
-        this.addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
+        if (this._debugMode) {
+            console.warn('[Audio] Audio is disabled for quicker parsing! Turn this off in `resources.debugMode`.');
+            this._addToAudioLoader('assets/music/debug/debug0.mp3', 'loadingScreen');
+            this._addToAudioLoader('assets/music/debug/debug1.mp3', 'mainMenu');
+        }
+        else {
+            this._addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
+            this._addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
+        }
+        this._addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
     }
-    addToAudioLoader(url, name) {
-        this.audioLoader.load(url, (audioBuffer) => {
+    _addToAudioLoader(url, name) {
+        this._audioLoader.load(url, (audioBuffer) => {
             console.log('[Audioloader] Done loading: ', name);
             this._music.push(new Music(audioBuffer, name));
-        }, (progress) => this.setProgress(progress), (error) => {
+        }, (progress) => this._setProgress(progress), (error) => {
             console.log('[Audioloader] An error happened', error);
         });
     }
-    addToFontLoader(url, name) {
-        this.fontLoader.load(url, (font) => {
+    _addToFontLoader(url, name) {
+        this._fontLoader.load(url, (font) => {
             console.log('[FontLoader] Done loading: ', name);
-            let geometry = new THREE.TextGeometry('i', { font: font, size: 1, height: 0.25 });
+            let geometry = new THREE.TextGeometry('i', {
+                font: font,
+                size: 1,
+                height: 0.25
+            });
             this._fonts.push(new Font(font, geometry, name));
         }, (progress) => {
-            this.setProgress(progress);
+            this._setProgress(progress);
         }, (error) => {
             console.error('[FontLoader] An error occured', error);
         });
     }
-    setProgress(progress) {
-        this.loadingScreen.setProgressInformation(progress.loaded, progress.total);
+    _setProgress(progress) {
+        this._loadingScreen.setProgressInformation(progress.loaded, progress.total);
     }
     get loadedResources() {
         return this._music.length + this._fonts.length;
@@ -273,10 +159,18 @@ class Resources {
         return this._fonts.filter(font => font.name === name)[0];
     }
     static getInstance() {
-        if (!Resources.instance) {
-            this.instance = new Resources();
+        if (!Resources._instance) {
+            this._instance = new Resources();
         }
-        return this.instance;
+        return this._instance;
+    }
+}
+class Slice {
+    constructor(_x, _y, _z, _length) {
+        this.x = _x;
+        this.y = _y;
+        this.z = _z;
+        this.length = _length;
     }
 }
 class GameObject {
@@ -332,111 +226,28 @@ class GameObject {
     }
 }
 class LevelCube extends GameObject {
-    constructor(x, y, z) {
-        super(new THREE.BoxGeometry(4, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+    constructor(x, y, z, length) {
+        super(new THREE.BoxGeometry(length, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+        const geometry = new THREE.PlaneGeometry(length, 1);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff000,
+            side: THREE.DoubleSide
+        });
+        this._debugPlane = new THREE.Mesh(geometry, material);
+        this._debugPlane.position.x = x;
+        this._debugPlane.position.y = y + 0.5;
+        this._debugPlane.position.z = z;
+        this._debugPlane.rotateX(Math.PI / 2);
+        Game.getInstance().scene.add(this._debugPlane);
+    }
+    get plane() {
+        return this._debugPlane;
     }
 }
 class Player extends GameObject {
     constructor(x, y, z) {
-        super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0xffff00 }), new THREE.Vector3(x, y, z));
-        this._speed = 0.05;
-        this._keydownCb = (e) => { this.keydownHandler(e); };
-        window.addEventListener('keydown', this._keydownCb);
-        this._behaviour = new Run(this);
-    }
-    get speed() {
-        return this._speed;
-    }
-    get behaviour() {
-        return this._behaviour;
-    }
-    set behaviour(behaviour) {
-        this._behaviour = behaviour;
-    }
-    keydownHandler(e) {
-        if (e.key === ' ' && !(this._behaviour instanceof Jump)) {
-            this._behaviour = new Jump(this);
-        }
-    }
-    remove() {
-        super.remove();
-        window.removeEventListener('keydown', this._keydownCb);
-    }
-    update() {
-        super.update();
-        this._behaviour.update();
-    }
-}
-class Die {
-    constructor(player) {
-        this.player = player;
-    }
-    update() {
-        this.player.remove();
-        console.warn('not implemented, removed player');
-    }
-}
-class Jump {
-    constructor(player, visibleArc) {
-        this._distance = 0;
-        this._height = 0.2;
-        this._canceled = false;
-        this.player = player;
-        this._arc = this.generateArc();
-        if (visibleArc) {
-            Game.getInstance().scene.add(this._arc);
-        }
-    }
-    get arc() {
-        return this._arc;
-    }
-    get cancelPosition() {
-        return this._cancelPosition;
-    }
-    set cancelPosition(position) {
-        this._cancelPosition = position;
-    }
-    calculateHeight(weight_distance, weight_height) {
-        let a = 1 - weight_distance;
-        let b = weight_height;
-        let x = this._distance;
-        return (-a * Math.pow(x, 2)) + (b * x);
-    }
-    generateArc() {
-        const arc = new THREE.Path();
-        arc.absellipse(this.player.position.x + 1, this.player.position.y, 0.6, 2.8, Math.PI, 2 * Math.PI, true, 0);
-        const points2D = arc.getPoints();
-        const points3D = points2D.map((point) => { return new THREE.Vector3(point.x, point.y, this.player.position.z); });
-        const geometry = new THREE.Geometry().setFromPoints(points3D);
-        const material = new THREE.LineBasicMaterial({ color: 0x000000 });
-        return new THREE.Line(geometry, material);
-    }
-    cancel() {
-        if (!this._cancelPosition) {
-            return;
-        }
-        if (this._cancelPosition.y + 0.15 >= this.player.position.y && this._cancelPosition.y - 0.15 <= this.player.position.y) {
-            this._canceled = true;
-            this.player.behaviour = new Run(this.player);
-        }
-    }
-    update() {
-        if (this._canceled) {
-            return;
-        }
-        this.cancel();
-        this.player.position.x += this.player.speed;
-        this._distance += this.player.speed;
-        this.player.position.y += this._height;
-        this._height = this.calculateHeight(0.04, 0.9);
-    }
-}
-class Run {
-    constructor(player) {
-        this.player = player;
-    }
-    update() {
-        this.player.mesh.position.x += this.player.speed;
+        super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0x000000 }), new THREE.Vector3(x, y, z));
+        this.velocityY = -0.01;
     }
 }
 class Resource {
@@ -468,5 +279,148 @@ class Music extends Resource {
         super(name);
         this._audio = audio;
     }
+}
+class Level {
+    constructor() {
+        this._level = [];
+        this._game = Game.getInstance();
+        this._resources = Resources.getInstance();
+        this._debugMode = this._game.debugMode;
+        this._setUpScene();
+        this._setUpFirstChunk();
+    }
+    _setUpFirstChunk() {
+        const chunk = LevelGenerator.generateChunk(1, 1);
+        chunk.forEach(slice => {
+            let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
+            this._level.push(cube);
+        });
+        let cube = chunk[0];
+        this._player = new Player(cube.x + 4, cube.y + 1, 1);
+        console.log(this._player);
+        this._syncCameraAndPlayerPosition();
+        this._physics = new Physics(this._level, this._player);
+        const direction = new THREE.Vector3(0, -1, 0);
+        const origin = this._player.position;
+        const raycast = new THREE.Raycaster(origin, direction);
+        Game.getInstance().scene.add(new THREE.ArrowHelper(raycast.ray.direction, raycast.ray.origin, 1, 0xff0000));
+        console.log(chunk);
+        console.log(Game.getInstance().scene.children);
+        console.log(raycast.intersectObjects(Game.getInstance().scene.children, true));
+    }
+    _setUpScene() {
+        this._game.scene = new THREE.Scene();
+        this._game.scene.background = new THREE.Color('white');
+        this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
+        this._game.camera.position.z = 10;
+        if (this._debugMode) {
+            const axesHelper = new THREE.AxesHelper(5);
+            this._game.scene.add(axesHelper);
+        }
+    }
+    _syncCameraAndPlayerPosition() {
+        this._game.camera.position.x = this._player.position.x;
+        this._game.camera.position.y = this._player.position.y;
+    }
+    update() {
+        this._physics.calculate();
+        this._syncCameraAndPlayerPosition();
+        if (this._player.position.x > this._level.length * 4 - 40) {
+            console.log('Generating new chunk!');
+            const chunk = LevelGenerator.generateChunk(this._level[this._level.length - 1].position.x / 4, this._level[this._level.length - 1].position.y);
+            chunk.forEach(slice => {
+                let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
+                this._level.push(cube);
+            });
+        }
+    }
+}
+class LoadingScreen {
+    constructor() {
+        this._isMusicPlaying = false;
+        this._lastProgress = 0;
+        this._state = 'loading';
+        this._frames = 0;
+        this._debugMode = false;
+        this._loadingText = document.getElementById('loading-text');
+        this._loadingSubtitle = document.getElementById('loading-subtitle');
+        this._loadingBox = document.getElementById('loading-screen');
+        this._game = Game.getInstance();
+        this._debugMode = this._game.debugMode;
+        this._setUpScene();
+        this._activateLoadingScreen();
+    }
+    _setUpScene() {
+        this._game.scene = new THREE.Scene();
+        this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
+        this._game.scene.background = new THREE.Color('white');
+        this._audioListener = new THREE.AudioListener();
+        this._game.camera.add(this._audioListener);
+        this._audio = new THREE.Audio(this._audioListener);
+        this._audio.setLoop(true);
+        this._game.scene.add(this._audio);
+    }
+    _activateLoadingScreen() {
+        this._resources = Resources.getInstance();
+        this._resources.loadingScreen = this;
+        this._resources.loadMain();
+    }
+    setProgressInformation(loaded, total) {
+        const newProgress = Math.round(loaded / total * 100);
+        if (newProgress >= this._lastProgress) {
+            this._progress = newProgress;
+        }
+        this._lastProgress = newProgress;
+    }
+    update() {
+        if (this._progress) {
+            this._loadingText.innerText = `Loading... (${this._progress}%)`;
+            this._loadingSubtitle.innerText = `${this._resources.loadedResources} of ${this._resources.totalResources} resources parsed`;
+            if (this._progress === 100) {
+                this._loadingText.innerText = 'Parsing resources...';
+                if (this._resources.loadedResources === this._resources.totalResources) {
+                    this._loadingText.innerText = 'Done!';
+                    this._state = 'exiting';
+                }
+            }
+        }
+        else {
+            this._loadingText.innerText = `Loading...`;
+        }
+        if (!this._debugMode && this._state === 'exiting') {
+            if (this._frames < 50) {
+                this._frames++;
+                this._loadingBox.style.transform = `scale(${1 - this._frames / 50})`;
+                this._loadingBox.style.opacity = `${1 - this._frames / 50}`;
+                this._audio.setVolume(1 - this._frames / 50);
+            }
+            else {
+                this._exit();
+            }
+        }
+        if (this._resources.getMusic('loadingScreen') && !this._isMusicPlaying) {
+            this._audio.setBuffer(this._resources.getMusic('loadingScreen').audio);
+            this._audio.play();
+            this._isMusicPlaying = true;
+        }
+    }
+    _exit() {
+        this._loadingBox.style.display = 'none';
+        this._game.stage = new Level();
+    }
+}
+class MainMenu {
+    constructor() {
+        this._game = Game.getInstance();
+        this._game.scene = new THREE.Scene();
+        this._game.scene.background = new THREE.Color('white');
+        this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+        this._game.scene.add(cube);
+        this._game.camera.position.z = 5;
+    }
+    update() { }
 }
 //# sourceMappingURL=main.js.map

@@ -8,7 +8,7 @@ class Music extends Resource {
   }
 
   constructor(audio: THREE.AudioBuffer, name: string) {
-    super(name)
+    super(name);
     this._audio = audio;
   }
 }
