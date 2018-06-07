@@ -9,6 +9,12 @@ class Player extends GameObject {
     );
 
     document.addEventListener('keydown', this._keydownHandler.bind(this));
+    document.addEventListener('mousemove', this._mouseHandler.bind(this));
+  }
+
+  private _mouseHandler(event: MouseEvent) {
+    console.log(event.clientY);
+    this.position.y = -(event.clientY / window.innerHeight) * 10 + 5;
   }
 
   private _keydownHandler(event: KeyboardEvent) {
