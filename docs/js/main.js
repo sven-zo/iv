@@ -208,6 +208,17 @@ class Player extends GameObject {
     constructor(x, y, z) {
         super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0x000000 }), new THREE.Vector3(x, y, z));
         this.speed = 0.1;
+        document.addEventListener('keydown', this._keydownHandler.bind(this));
+    }
+    _keydownHandler(event) {
+        switch (event.key) {
+            case 'ArrowUp':
+                this.position.y = this.position.y + this.speed * 2;
+                break;
+            case 'ArrowDown':
+                this.position.y = this.position.y - this.speed * 2;
+                break;
+        }
     }
     update() {
         this.position.x = this.position.x + this.speed;
