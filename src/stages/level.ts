@@ -1,10 +1,11 @@
 class Level implements Stage {
   private _game: Game;
-  private _level: LevelCube[] = [];
+  private _level: BoxObject[] = [];
   private _resources: Resources;
   private _player: Player;
   private _debugMode: boolean;
-  private _physics: Physics;
+  private _chunkDistance: number = 0;
+  private _ids: number = 0;
 
   constructor() {
     this._game = Game.getInstance();
@@ -16,37 +17,19 @@ class Level implements Stage {
   }
 
   private _setUpFirstChunk() {
-    // Add LevelCubes based on the generated Chunk
-    const chunk = LevelGenerator.generateChunk(1, 1);
-    chunk.forEach(slice => {
-      let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
-      this._level.push(cube);
-    });
-    // Add the player above first cube
-    let cube = chunk[0];
+    this._player = new Player(0, 0, 1);
+    this._chunkDistance = 19;
 
-    this._player = new Player(cube.x + 4, cube.y + 1, 1);
-    console.log(this._player);
+    for (let i = -10; i < 21; i++) {
+      this._ids++;
+      this._level.push(new BoxObject(i, -6, 1, this._ids));
+      this._ids++;
+      this._level.push(new BoxObject(i, 6, 1, this._ids));
+    }
+
     // Sync camera position
     this._syncCameraAndPlayerPosition();
-    this._physics = new Physics(this._level, this._player);
-    // TODO: remove this
-    const direction = new THREE.Vector3(0, -1, 0);
-    const origin = this._player.position;
-    const raycast = new THREE.Raycaster(origin, direction);
-    Game.getInstance().scene.add(
-      new THREE.ArrowHelper(
-        raycast.ray.direction,
-        raycast.ray.origin,
-        1,
-        0xff0000
-      )
-    );
-    console.log(chunk);
-    console.log(Game.getInstance().scene.children);
-    console.log(
-      raycast.intersectObjects(Game.getInstance().scene.children, true)
-    );
+    console.log('Camera position:', this._game.camera.position);
   }
 
   private _setUpScene() {
@@ -68,29 +51,33 @@ class Level implements Stage {
 
   private _syncCameraAndPlayerPosition(): void {
     this._game.camera.position.x = this._player.position.x;
-    this._game.camera.position.y = this._player.position.y;
-    // TODO: remove this
-    //this._game.camera.position.y = this._player.position.y + 10;
-    //this._game.camera.rotation.x = 1;
-    // this._game.camera.position.z = 200;
+    this._game.camera.position.y = 0;
+  }
+
+  private _removeOldChunks() {
+    this._level.filter(box => box.position.x < this._player.position.x + 20);
+    this._level.forEach(box => {
+      if (box.position.x < this._player.position.x - 20) {
+        const boxRef = box.id;
+        box.remove();
+        this._level = this._level.filter(b => b.id !== boxRef);
+      }
+    });
   }
 
   public update(): void {
-    this._physics.calculate();
     this._syncCameraAndPlayerPosition();
-    if (this._player.position.x > this._level.length * 4 - 40) {
-      console.log('Generating new chunk!');
-      const chunk = LevelGenerator.generateChunk(
-        this._level[this._level.length - 1].position.x / 4,
-        this._level[this._level.length - 1].position.y
-      );
-      chunk.forEach(slice => {
-        let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
-        this._level.push(cube);
+    this._removeOldChunks();
+    this._chunkDistance = this._chunkDistance + this._player.speed;
+    if (this._chunkDistance > 20) {
+      this._chunkDistance = 0;
+      const chunk = LevelGenerator.generateChunk(this._player.position.x + 20);
+      chunk.forEach(b => {
+        this._ids++;
+        let box = new BoxObject(b.x, b.y, b.z, this._ids);
+        this._level.push(box);
       });
     }
-    // if (this._player.position > (this._level.length * 4))
-    // this._collisionChecker.collide(this._level, this._player);
-    // this._syncCameraAndPlayerPosition();
+    this._player.update();
   }
 }

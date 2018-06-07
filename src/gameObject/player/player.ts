@@ -1,5 +1,5 @@
 class Player extends GameObject {
-  public velocityY: number = -0.01;
+  public speed: number = 0.1;
 
   constructor(x: number, y: number, z: number) {
     super(
@@ -7,5 +7,9 @@ class Player extends GameObject {
       new THREE.MeshBasicMaterial({ color: 0x000000 }),
       new THREE.Vector3(x, y, z)
     );
+  }
+
+  public update() {
+    this.position.x = this.position.x + this.speed;
   }
 }

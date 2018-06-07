@@ -1,4 +1,11 @@
 "use strict";
+class BoxData {
+    constructor(_x, _y, _z) {
+        this.x = _x;
+        this.y = _y;
+        this.z = _z;
+    }
+}
 class Game {
     constructor() {
         this.rendererWidth = window.innerWidth - 10;
@@ -54,43 +61,17 @@ window.addEventListener('load', () => {
     g.initialise();
 });
 class LevelGenerator {
-    static generateChunk(startingXCoords, startingYCoords) {
+    static generateChunk(startingX) {
         const chunk = [];
-        const chunkLength = 20;
-        const startingSlice = new Slice(startingXCoords, startingYCoords, 1, 4);
-        for (let i = startingXCoords; i < chunkLength + startingXCoords; i++) {
-            if (i === startingXCoords) {
-                chunk.push(this._generateSlice(startingSlice));
-            }
-            else {
-                chunk.push(this._generateSlice(chunk[chunk.length - 1]));
-            }
+        for (let i = 0 + startingX; i < this.chunkLength + startingX; i++) {
+            chunk.push(new BoxData(i, -6, 1));
+            chunk.push(new BoxData(i, 6, 1));
+            chunk.push(new BoxData(i, Math.random() * 12 - 6, 1));
         }
         return chunk;
     }
-    static _generateSlice(previousSlice) {
-        const s = previousSlice;
-        const n = Math.floor(Math.random() * 3);
-        switch (n) {
-            case 0:
-                return new Slice(s.x + 1, s.y + 1, 1, 4);
-            case 1:
-                return new Slice(s.x + 1, s.y - 1, 1, 4);
-            case 2:
-                return new Slice(s.x + 1, s.y, 1, 4);
-        }
-        return new Slice(s.x + 1, s.y, 1, 4);
-    }
 }
-class Physics {
-    constructor(level, player) {
-        this._level = level;
-        this._player = player;
-    }
-    calculate() {
-        const ticksPerUpdate = 1;
-    }
-}
+LevelGenerator.chunkLength = 20;
 class Progress {
     constructor(loaded, total) {
         this.loaded = loaded;
@@ -165,14 +146,6 @@ class Resources {
         return this._instance;
     }
 }
-class Slice {
-    constructor(_x, _y, _z, _length) {
-        this.x = _x;
-        this.y = _y;
-        this.z = _z;
-        this.length = _length;
-    }
-}
 class GameObject {
     get mesh() {
         return this._mesh;
@@ -225,29 +198,19 @@ class GameObject {
         this._game.scene.remove(this._mesh);
     }
 }
-class LevelCube extends GameObject {
-    constructor(x, y, z, length) {
-        super(new THREE.BoxGeometry(length, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
-        const geometry = new THREE.PlaneGeometry(length, 1);
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x00ff000,
-            side: THREE.DoubleSide
-        });
-        this._debugPlane = new THREE.Mesh(geometry, material);
-        this._debugPlane.position.x = x;
-        this._debugPlane.position.y = y + 0.5;
-        this._debugPlane.position.z = z;
-        this._debugPlane.rotateX(Math.PI / 2);
-        Game.getInstance().scene.add(this._debugPlane);
-    }
-    get plane() {
-        return this._debugPlane;
+class BoxObject extends GameObject {
+    constructor(x, y, z, id) {
+        super(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+        this.id = id;
     }
 }
 class Player extends GameObject {
     constructor(x, y, z) {
         super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0x000000 }), new THREE.Vector3(x, y, z));
-        this.velocityY = -0.01;
+        this.speed = 0.1;
+    }
+    update() {
+        this.position.x = this.position.x + this.speed;
     }
 }
 class Resource {
@@ -283,6 +246,8 @@ class Music extends Resource {
 class Level {
     constructor() {
         this._level = [];
+        this._chunkDistance = 0;
+        this._ids = 0;
         this._game = Game.getInstance();
         this._resources = Resources.getInstance();
         this._debugMode = this._game.debugMode;
@@ -290,23 +255,16 @@ class Level {
         this._setUpFirstChunk();
     }
     _setUpFirstChunk() {
-        const chunk = LevelGenerator.generateChunk(1, 1);
-        chunk.forEach(slice => {
-            let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
-            this._level.push(cube);
-        });
-        let cube = chunk[0];
-        this._player = new Player(cube.x + 4, cube.y + 1, 1);
-        console.log(this._player);
+        this._player = new Player(0, 0, 1);
+        this._chunkDistance = 19;
+        for (let i = -10; i < 21; i++) {
+            this._ids++;
+            this._level.push(new BoxObject(i, -6, 1, this._ids));
+            this._ids++;
+            this._level.push(new BoxObject(i, 6, 1, this._ids));
+        }
         this._syncCameraAndPlayerPosition();
-        this._physics = new Physics(this._level, this._player);
-        const direction = new THREE.Vector3(0, -1, 0);
-        const origin = this._player.position;
-        const raycast = new THREE.Raycaster(origin, direction);
-        Game.getInstance().scene.add(new THREE.ArrowHelper(raycast.ray.direction, raycast.ray.origin, 1, 0xff0000));
-        console.log(chunk);
-        console.log(Game.getInstance().scene.children);
-        console.log(raycast.intersectObjects(Game.getInstance().scene.children, true));
+        console.log('Camera position:', this._game.camera.position);
     }
     _setUpScene() {
         this._game.scene = new THREE.Scene();
@@ -320,19 +278,32 @@ class Level {
     }
     _syncCameraAndPlayerPosition() {
         this._game.camera.position.x = this._player.position.x;
-        this._game.camera.position.y = this._player.position.y;
+        this._game.camera.position.y = 0;
+    }
+    _removeOldChunks() {
+        this._level.filter(box => box.position.x < this._player.position.x + 20);
+        this._level.forEach(box => {
+            if (box.position.x < this._player.position.x - 20) {
+                const boxRef = box.id;
+                box.remove();
+                this._level = this._level.filter(b => b.id !== boxRef);
+            }
+        });
     }
     update() {
-        this._physics.calculate();
         this._syncCameraAndPlayerPosition();
-        if (this._player.position.x > this._level.length * 4 - 40) {
-            console.log('Generating new chunk!');
-            const chunk = LevelGenerator.generateChunk(this._level[this._level.length - 1].position.x / 4, this._level[this._level.length - 1].position.y);
-            chunk.forEach(slice => {
-                let cube = new LevelCube(slice.x * 4, slice.y, slice.z, slice.length);
-                this._level.push(cube);
+        this._removeOldChunks();
+        this._chunkDistance = this._chunkDistance + this._player.speed;
+        if (this._chunkDistance > 20) {
+            this._chunkDistance = 0;
+            const chunk = LevelGenerator.generateChunk(this._player.position.x + 20);
+            chunk.forEach(b => {
+                this._ids++;
+                let box = new BoxObject(b.x, b.y, b.z, this._ids);
+                this._level.push(box);
             });
         }
+        this._player.update();
     }
 }
 class LoadingScreen {
