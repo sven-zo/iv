@@ -199,20 +199,39 @@ class GameObject {
     }
 }
 class BoxObject extends GameObject {
-    constructor(x, y, z, id) {
-        super(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+    constructor(x, y, z, id, light) {
+        super(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshPhongMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
+        if (light) {
+            const n = Math.floor(Math.random() * 3);
+            switch (n) {
+                case 0:
+                    this._light = new THREE.PointLight(0xff0000, 1, 30, 2);
+                    break;
+                case 1:
+                    this._light = new THREE.PointLight(0x00ff00, 1, 30, 2);
+                    break;
+                case 2:
+                    this._light = new THREE.PointLight(0x0000ff, 1, 30, 2);
+                    break;
+            }
+            this._light.position.x = this.position.x;
+            this._light.position.y = this.position.y;
+            this._light.position.z = this.position.z + 2;
+            Game.getInstance().scene.add(this._light);
+        }
         this.id = id;
     }
 }
 class Player extends GameObject {
     constructor(x, y, z) {
-        super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0x000000 }), new THREE.Vector3(x, y, z));
+        super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0xffffff }), new THREE.Vector3(x, y, z));
         this.speed = 0.1;
         document.addEventListener('keydown', this._keydownHandler.bind(this));
         document.addEventListener('mousemove', this._mouseHandler.bind(this));
+        this._light = new THREE.PointLight(0xffffff, 1, 100, 2);
+        Game.getInstance().scene.add(this._light);
     }
     _mouseHandler(event) {
-        console.log(event.clientY);
         this.position.y = -(event.clientY / window.innerHeight) * 10 + 5;
     }
     _keydownHandler(event) {
@@ -227,6 +246,9 @@ class Player extends GameObject {
     }
     update() {
         this.position.x = this.position.x + this.speed;
+        this._light.position.x = this.position.x;
+        this._light.position.y = this.position.y;
+        this._light.position.z = this.position.z;
     }
 }
 class Resource {
@@ -264,6 +286,7 @@ class Level {
         this._level = [];
         this._chunkDistance = 0;
         this._ids = 0;
+        this._lightBlocksPerChunk = 0;
         this._game = Game.getInstance();
         this._resources = Resources.getInstance();
         this._debugMode = this._game.debugMode;
@@ -275,16 +298,17 @@ class Level {
         this._chunkDistance = 19;
         for (let i = -10; i < 21; i++) {
             this._ids++;
-            this._level.push(new BoxObject(i, -6, 1, this._ids));
+            this._level.push(new BoxObject(i, -6, 1, this._ids, false));
             this._ids++;
-            this._level.push(new BoxObject(i, 6, 1, this._ids));
+            this._level.push(new BoxObject(i, 6, 1, this._ids, false));
         }
         this._syncCameraAndPlayerPosition();
         console.log('Camera position:', this._game.camera.position);
+        console.log('Game scene:', this._game.scene);
     }
     _setUpScene() {
         this._game.scene = new THREE.Scene();
-        this._game.scene.background = new THREE.Color('white');
+        this._game.scene.background = new THREE.Color('black');
         this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
         this._game.camera.position.z = 10;
         if (this._debugMode) {
@@ -311,11 +335,19 @@ class Level {
         this._removeOldChunks();
         this._chunkDistance = this._chunkDistance + this._player.speed;
         if (this._chunkDistance > 20) {
+            this._lightBlocksPerChunk = 5;
             this._chunkDistance = 0;
             const chunk = LevelGenerator.generateChunk(this._player.position.x + 20);
             chunk.forEach(b => {
                 this._ids++;
-                let box = new BoxObject(b.x, b.y, b.z, this._ids);
+                let light = false;
+                if (this._lightBlocksPerChunk > 0) {
+                    light = Math.random() < 0.04 ? true : false;
+                    if (light) {
+                        this._lightBlocksPerChunk--;
+                    }
+                }
+                let box = new BoxObject(b.x, b.y, b.z, this._ids, light);
                 this._level.push(box);
             });
         }

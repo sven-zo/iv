@@ -6,6 +6,7 @@ class Level implements Stage {
   private _debugMode: boolean;
   private _chunkDistance: number = 0;
   private _ids: number = 0;
+  private _lightBlocksPerChunk: number = 0;
 
   constructor() {
     this._game = Game.getInstance();
@@ -22,19 +23,20 @@ class Level implements Stage {
 
     for (let i = -10; i < 21; i++) {
       this._ids++;
-      this._level.push(new BoxObject(i, -6, 1, this._ids));
+      this._level.push(new BoxObject(i, -6, 1, this._ids, false));
       this._ids++;
-      this._level.push(new BoxObject(i, 6, 1, this._ids));
+      this._level.push(new BoxObject(i, 6, 1, this._ids, false));
     }
 
     // Sync camera position
     this._syncCameraAndPlayerPosition();
     console.log('Camera position:', this._game.camera.position);
+    console.log('Game scene:', this._game.scene);
   }
 
   private _setUpScene() {
     this._game.scene = new THREE.Scene();
-    this._game.scene.background = new THREE.Color('white');
+    this._game.scene.background = new THREE.Color('black');
     this._game.camera = new THREE.PerspectiveCamera(
       75,
       this._game.rendererWidth / this._game.rendererHeight,
@@ -70,11 +72,21 @@ class Level implements Stage {
     this._removeOldChunks();
     this._chunkDistance = this._chunkDistance + this._player.speed;
     if (this._chunkDistance > 20) {
+      // TODO: minder lichten bij meer difficult
+      this._lightBlocksPerChunk = 5;
       this._chunkDistance = 0;
       const chunk = LevelGenerator.generateChunk(this._player.position.x + 20);
       chunk.forEach(b => {
         this._ids++;
-        let box = new BoxObject(b.x, b.y, b.z, this._ids);
+        let light = false;
+        if (this._lightBlocksPerChunk > 0) {
+          // TODO: minder kans bij meer difficult
+          light = Math.random() < 0.04 ? true : false;
+          if (light) {
+            this._lightBlocksPerChunk--;
+          }
+        }
+        let box = new BoxObject(b.x, b.y, b.z, this._ids, light);
         this._level.push(box);
       });
     }
