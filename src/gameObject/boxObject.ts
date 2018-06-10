@@ -1,10 +1,17 @@
 /// <reference path="./gameObject.ts" />
 
-class BoxObject extends GameObject {
+class BoxObject extends GameObject implements Observer {
   public id: number;
-  private _light: THREE.PointLight;
+  public light: THREE.PointLight;
 
-  constructor(x: number, y: number, z: number, id: number, light: boolean) {
+  constructor(
+    x: number,
+    y: number,
+    z: number,
+    id: number,
+    light: boolean,
+    level: Level
+  ) {
     super(
       new THREE.BoxGeometry(1, 1, 1),
       new THREE.MeshPhongMaterial({ color: new THREE.Color('grey') }),
@@ -15,21 +22,25 @@ class BoxObject extends GameObject {
       switch (n) {
         case 0:
           // TODO: minder distance bij meer difficult
-          this._light = new THREE.PointLight(0xff0000, 1, 30, 2);
+          this.light = new THREE.PointLight(0xff0000, 1, 30, 2);
           break;
         case 1:
-          this._light = new THREE.PointLight(0x00ff00, 1, 30, 2);
+          this.light = new THREE.PointLight(0x00ff00, 1, 30, 2);
           break;
         case 2:
-          this._light = new THREE.PointLight(0x0000ff, 1, 30, 2);
+          this.light = new THREE.PointLight(0x0000ff, 1, 30, 2);
           break;
       }
-      this._light.position.x = this.position.x;
-      this._light.position.y = this.position.y;
-      this._light.position.z = this.position.z + 2;
-      Game.getInstance().scene.add(this._light);
-      // TODO: delete old lamps
+      this.light.position.x = this.position.x;
+      this.light.position.y = this.position.y;
+      this.light.position.z = this.position.z + 2;
+      level.subscribe(this);
+      Game.getInstance().scene.add(this.light);
     }
     this.id = id;
+  }
+
+  public notify(distance: number): void {
+    this.light.distance = distance;
   }
 }

@@ -199,27 +199,31 @@ class GameObject {
     }
 }
 class BoxObject extends GameObject {
-    constructor(x, y, z, id, light) {
+    constructor(x, y, z, id, light, level) {
         super(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshPhongMaterial({ color: new THREE.Color('grey') }), new THREE.Vector3(x, y, z));
         if (light) {
             const n = Math.floor(Math.random() * 3);
             switch (n) {
                 case 0:
-                    this._light = new THREE.PointLight(0xff0000, 1, 30, 2);
+                    this.light = new THREE.PointLight(0xff0000, 1, 30, 2);
                     break;
                 case 1:
-                    this._light = new THREE.PointLight(0x00ff00, 1, 30, 2);
+                    this.light = new THREE.PointLight(0x00ff00, 1, 30, 2);
                     break;
                 case 2:
-                    this._light = new THREE.PointLight(0x0000ff, 1, 30, 2);
+                    this.light = new THREE.PointLight(0x0000ff, 1, 30, 2);
                     break;
             }
-            this._light.position.x = this.position.x;
-            this._light.position.y = this.position.y;
-            this._light.position.z = this.position.z + 2;
-            Game.getInstance().scene.add(this._light);
+            this.light.position.x = this.position.x;
+            this.light.position.y = this.position.y;
+            this.light.position.z = this.position.z + 2;
+            level.subscribe(this);
+            Game.getInstance().scene.add(this.light);
         }
         this.id = id;
+    }
+    notify(distance) {
+        this.light.distance = distance;
     }
 }
 class Player extends GameObject {
@@ -287,6 +291,7 @@ class Level {
         this._chunkDistance = 0;
         this._ids = 0;
         this._lightBlocksPerChunk = 0;
+        this._observers = [];
         this._game = Game.getInstance();
         this._resources = Resources.getInstance();
         this._debugMode = this._game.debugMode;
@@ -298,9 +303,9 @@ class Level {
         this._chunkDistance = 19;
         for (let i = -10; i < 21; i++) {
             this._ids++;
-            this._level.push(new BoxObject(i, -6, 1, this._ids, false));
+            this._level.push(new BoxObject(i, -6, 1, this._ids, false, this));
             this._ids++;
-            this._level.push(new BoxObject(i, 6, 1, this._ids, false));
+            this._level.push(new BoxObject(i, 6, 1, this._ids, false, this));
         }
         this._syncCameraAndPlayerPosition();
         console.log('Camera position:', this._game.camera.position);
@@ -325,9 +330,16 @@ class Level {
         this._level.forEach(box => {
             if (box.position.x < this._player.position.x - 20) {
                 const boxRef = box.id;
+                this.unsubscribe(box);
+                this._game.scene.remove(box.light);
                 box.remove();
                 this._level = this._level.filter(b => b.id !== boxRef);
             }
+        });
+    }
+    _notifyLightBlocks(distance) {
+        this._observers.forEach(o => {
+            o.notify(distance);
         });
     }
     update() {
@@ -347,11 +359,18 @@ class Level {
                         this._lightBlocksPerChunk--;
                     }
                 }
-                let box = new BoxObject(b.x, b.y, b.z, this._ids, light);
+                let box = new BoxObject(b.x, b.y, b.z, this._ids, light, this);
                 this._level.push(box);
             });
         }
         this._player.update();
+        this._notifyLightBlocks(Math.random() * 20);
+    }
+    subscribe(observer) {
+        this._observers.push(observer);
+    }
+    unsubscribe(observer) {
+        this._observers = this._observers.filter(o => o !== observer);
     }
 }
 class LoadingScreen {

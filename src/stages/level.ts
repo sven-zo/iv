@@ -1,4 +1,4 @@
-class Level implements Stage {
+class Level implements Stage, Subject {
   private _game: Game;
   private _level: BoxObject[] = [];
   private _resources: Resources;
@@ -7,6 +7,7 @@ class Level implements Stage {
   private _chunkDistance: number = 0;
   private _ids: number = 0;
   private _lightBlocksPerChunk: number = 0;
+  private _observers: Observer[] = [];
 
   constructor() {
     this._game = Game.getInstance();
@@ -23,9 +24,9 @@ class Level implements Stage {
 
     for (let i = -10; i < 21; i++) {
       this._ids++;
-      this._level.push(new BoxObject(i, -6, 1, this._ids, false));
+      this._level.push(new BoxObject(i, -6, 1, this._ids, false, this));
       this._ids++;
-      this._level.push(new BoxObject(i, 6, 1, this._ids, false));
+      this._level.push(new BoxObject(i, 6, 1, this._ids, false, this));
     }
 
     // Sync camera position
@@ -61,9 +62,18 @@ class Level implements Stage {
     this._level.forEach(box => {
       if (box.position.x < this._player.position.x - 20) {
         const boxRef = box.id;
+        this.unsubscribe(box);
+        this._game.scene.remove(box.light);
+        //box.light.remove();
         box.remove();
         this._level = this._level.filter(b => b.id !== boxRef);
       }
+    });
+  }
+
+  private _notifyLightBlocks(distance: number) {
+    this._observers.forEach(o => {
+      o.notify(distance);
     });
   }
 
@@ -86,10 +96,19 @@ class Level implements Stage {
             this._lightBlocksPerChunk--;
           }
         }
-        let box = new BoxObject(b.x, b.y, b.z, this._ids, light);
+        let box = new BoxObject(b.x, b.y, b.z, this._ids, light, this);
         this._level.push(box);
       });
     }
     this._player.update();
+    this._notifyLightBlocks(Math.random() * 20);
+  }
+
+  public subscribe(observer: Observer) {
+    this._observers.push(observer);
+  }
+
+  public unsubscribe(observer: Observer) {
+    this._observers = this._observers.filter(o => o !== observer);
   }
 }
