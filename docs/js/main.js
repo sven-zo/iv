@@ -248,7 +248,11 @@ class Player extends GameObject {
                 break;
         }
     }
+    get boundingBox() {
+        return this._boundingBox;
+    }
     update() {
+        super.update();
         this.position.x = this.position.x + this.speed;
         this._light.position.x = this.position.x;
         this._light.position.y = this.position.y;
@@ -284,6 +288,15 @@ class Music extends Resource {
         super(name);
         this._audio = audio;
     }
+}
+class GameOverScreen {
+    constructor() {
+        this._game = Game.getInstance();
+        this._game.scene = new THREE.Scene();
+        this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
+        this._game.scene.background = new THREE.Color('red');
+    }
+    update() { }
 }
 class Level {
     constructor() {
@@ -364,7 +377,21 @@ class Level {
             });
         }
         this._player.update();
-        this._notifyLightBlocks(Math.random() * 20);
+        this._collide();
+        this._notifyLightBlocks(30);
+    }
+    _gameOver() {
+        this._game.stage = new GameOverScreen();
+    }
+    _collide() {
+        const playerBoundingBox = this._player.boundingBox;
+        this._level.forEach(box => {
+            box.update();
+            const boxBoundingBox = box.boundingBox;
+            if (playerBoundingBox.intersectsBox(boxBoundingBox)) {
+                this._gameOver();
+            }
+        });
     }
     subscribe(observer) {
         this._observers.push(observer);

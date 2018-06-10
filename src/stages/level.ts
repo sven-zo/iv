@@ -101,7 +101,24 @@ class Level implements Stage, Subject {
       });
     }
     this._player.update();
-    this._notifyLightBlocks(Math.random() * 20);
+    this._collide();
+    this._notifyLightBlocks(30);
+  }
+
+  private _gameOver() {
+    this._game.stage = new GameOverScreen();
+  }
+
+  private _collide() {
+    const playerBoundingBox = this._player.boundingBox;
+    this._level.forEach(box => {
+      box.update();
+      const boxBoundingBox = box.boundingBox;
+      // console.log(playerBoundingBox.intersectsBox(boxBoundingBox));
+      if (playerBoundingBox.intersectsBox(boxBoundingBox)) {
+        this._gameOver();
+      }
+    });
   }
 
   public subscribe(observer: Observer) {

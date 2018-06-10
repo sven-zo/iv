@@ -30,7 +30,12 @@ class Player extends GameObject {
     }
   }
 
+  public get boundingBox(): THREE.Box3 {
+    return this._boundingBox;
+  }
+
   public update() {
+    super.update();
     this.position.x = this.position.x + this.speed;
     this._light.position.x = this.position.x;
     this._light.position.y = this.position.y;
