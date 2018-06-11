@@ -94,16 +94,17 @@ class Level implements Stage, Subject {
   private _updateScoreAndDifficulty() {
     this._scoreElem.innerText = Math.floor(this._player.position.x).toString();
     this._scoreSubElem.innerText = '';
-    if (this._player.position.x > 0 && this._player.position.x < 10) {
-      // this._scoreSubElem.innerText = 'LEVEL 0 - Good luck!';
-      this._scoreSubElem.innerText = "Don't fail!";
+    if (this._player.position.x > 0 && this._player.position.x < 15) {
+      this._scoreSubElem.innerText = "Don't fail.";
     }
-    if (this._player.position.x > 200 && this._player.position.x < 210) {
-      // this._scoreSubElem.innerText = 'LEVEL 1';
-    }
-    if (this._player.position.x > 300 && this._player.position.x < 310) {
-      // this._scoreSubElem.innerText = 'LEVEL 2 - The lights are dimming...';
+    if (this._player.position.x > 300 && this._player.position.x < 315) {
       this._scoreSubElem.innerText = 'Lights out.';
+    }
+    if (this._player.position.x > 600 && this._player.position.x < 615) {
+      this._scoreSubElem.innerText = "Let's go faster.";
+      this._player.speed = 0.13;
+      // TODO: laat score even snel optellen als eerst
+      // waarschijnlijk door te delen door 1/0.13
     }
   }
 
@@ -135,7 +136,7 @@ class Level implements Stage, Subject {
       });
     }
     this._player.update();
-    //this._collide();
+    this._collide();
     this._updateScoreAndDifficulty();
     if (this._lightStrength < 0.05) {
       this._lightStrength = -1;
@@ -156,7 +157,6 @@ class Level implements Stage, Subject {
     this._level.forEach(box => {
       box.update();
       const boxBoundingBox = box.boundingBox;
-      // console.log(playerBoundingBox.intersectsBox(boxBoundingBox));
       if (playerBoundingBox.intersectsBox(boxBoundingBox)) {
         this._gameOver();
       }
