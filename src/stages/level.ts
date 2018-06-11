@@ -9,15 +9,18 @@ class Level implements Stage, Subject {
   private _lightBlocksPerChunk: number = 0;
   private _observers: Observer[] = [];
   private _scoreElem: HTMLDivElement;
+  private _scoreSubElem: HTMLDivElement;
   private _audioListener: THREE.AudioListener;
   private _audio: THREE.Audio;
+  private _lightStrength: number = 1;
 
   constructor() {
     this._game = Game.getInstance();
     this._resources = Resources.getInstance();
     this._debugMode = this._game.debugMode;
 
-    this._scoreElem = document.getElementById('score') as HTMLDivElement;
+    this._scoreElem = document.getElementById('score-score') as HTMLDivElement;
+    this._scoreSubElem = document.getElementById('score-sub') as HTMLDivElement;
 
     this._setUpScene();
     this._setUpFirstChunk();
@@ -88,8 +91,20 @@ class Level implements Stage, Subject {
     });
   }
 
-  private _updateScore() {
+  private _updateScoreAndDifficulty() {
     this._scoreElem.innerText = Math.floor(this._player.position.x).toString();
+    this._scoreSubElem.innerText = '';
+    if (this._player.position.x > 0 && this._player.position.x < 10) {
+      // this._scoreSubElem.innerText = 'LEVEL 0 - Good luck!';
+      this._scoreSubElem.innerText = "Don't fail!";
+    }
+    if (this._player.position.x > 200 && this._player.position.x < 210) {
+      // this._scoreSubElem.innerText = 'LEVEL 1';
+    }
+    if (this._player.position.x > 300 && this._player.position.x < 310) {
+      // this._scoreSubElem.innerText = 'LEVEL 2 - The lights are dimming...';
+      this._scoreSubElem.innerText = 'Lights out.';
+    }
   }
 
   public update(): void {
@@ -120,9 +135,15 @@ class Level implements Stage, Subject {
       });
     }
     this._player.update();
-    this._collide();
-    this._updateScore();
-    this._notifyLightBlocks(30);
+    //this._collide();
+    this._updateScoreAndDifficulty();
+    if (this._lightStrength < 0.05) {
+      this._lightStrength = -1;
+      this._notifyLightBlocks(0.1);
+    } else {
+      this._lightStrength = 40 - this._player.position.x / 9;
+      this._notifyLightBlocks(this._lightStrength);
+    }
   }
 
   private _gameOver() {

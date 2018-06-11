@@ -30,10 +30,18 @@ body { margin: 0; }
   color: white;
 }
 
-#score {
+#score-score {
   font-size: 5vw;
   font-family: 'Source Sans Pro', sans-serif;
   font-weight: bolder;
+  font-style: italic;
+  color: white;
+  opacity: 0.8;
+}
+
+#score-sub {
+  font-size: 3vw;
+  font-family: 'Source Sans Pro', sans-serif;
   font-style: italic;
   color: white;
   opacity: 0.8;

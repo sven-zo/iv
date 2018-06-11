@@ -20,7 +20,6 @@ class Resources {
 
   private _loadMainAfterMusic() {
     if (this._music.length < 1) {
-      console.log('chekcing');
       setTimeout(() => {
         this._loadMainAfterMusic();
       }, 50);
