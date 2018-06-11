@@ -92,6 +92,20 @@ class Resources {
     set loadingScreen(loadingScreen) {
         this._loadingScreen = loadingScreen;
     }
+    _loadMainAfterMusic() {
+        if (this._music.length < 1) {
+            console.log('chekcing');
+            setTimeout(() => {
+                this._loadMainAfterMusic();
+            }, 50);
+        }
+        else {
+            console.log('[AudioLoader] Loading the rest of the music');
+            this._addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
+            this._addToAudioLoader('assets/music/160907__raccoonanimator__cue-scratch.wav', 'death');
+            this._addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
+        }
+    }
     loadMain() {
         if (this._debugMode) {
             console.warn('[Audio] Audio is disabled for quicker parsing! Turn this off in `resources.debugMode`.');
@@ -99,11 +113,9 @@ class Resources {
             this._addToAudioLoader('assets/music/debug/debug1.mp3', 'mainMenu');
         }
         else {
-            this._addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
-            this._addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
-            this._addToAudioLoader('assets/music/160907__raccoonanimator__cue-scratch.wav', 'death');
+            this._addToAudioLoader('assets/music/ElementaryXSD.mp3', 'loadingScreen');
+            this._loadMainAfterMusic();
         }
-        this._addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
     }
     _addToAudioLoader(url, name) {
         this._audioLoader.load(url, (audioBuffer) => {
