@@ -9,6 +9,8 @@ class Level implements Stage, Subject {
   private _lightBlocksPerChunk: number = 0;
   private _observers: Observer[] = [];
   private _scoreElem: HTMLDivElement;
+  private _audioListener: THREE.AudioListener;
+  private _audio: THREE.Audio;
 
   constructor() {
     this._game = Game.getInstance();
@@ -48,6 +50,13 @@ class Level implements Stage, Subject {
       1000
     );
     this._game.camera.position.z = 10;
+    this._audioListener = new THREE.AudioListener();
+    this._game.camera.add(this._audioListener);
+    this._audio = new THREE.Audio(this._audioListener);
+    this._audio.setLoop(true);
+    this._audio.setBuffer(this._resources.getMusic('mainMenu').audio);
+    this._game.scene.add(this._audio);
+    this._audio.play();
 
     if (this._debugMode) {
       const axesHelper = new THREE.AxesHelper(5);
@@ -67,7 +76,6 @@ class Level implements Stage, Subject {
         const boxRef = box.id;
         this.unsubscribe(box);
         this._game.scene.remove(box.light);
-        //box.light.remove();
         box.remove();
         this._level = this._level.filter(b => b.id !== boxRef);
       }
@@ -97,13 +105,17 @@ class Level implements Stage, Subject {
         this._ids++;
         let light = false;
         if (this._lightBlocksPerChunk > 0) {
-          // TODO: minder kans bij meer difficult
           light = Math.random() < 0.04 ? true : false;
           if (light) {
             this._lightBlocksPerChunk--;
           }
         }
-        let box = new BoxObject(b.x, b.y, b.z, this._ids, light, this);
+        let box: BoxObject;
+        if (light) {
+          box = new BoxObjectWithLight(b.x, b.y, b.z, this._ids, this);
+        } else {
+          box = new BoxObjectWithoutLight(b.x, b.y, b.z, this._ids, this);
+        }
         this._level.push(box);
       });
     }
@@ -114,6 +126,7 @@ class Level implements Stage, Subject {
   }
 
   private _gameOver() {
+    this._audio.pause();
     this._game.stage = new GameOverScreen();
   }
 

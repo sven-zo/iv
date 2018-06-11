@@ -1,6 +1,8 @@
 class GameOverScreen implements Stage {
   private _game: Game;
   private _gameOverText: HTMLDivElement;
+  private _audio: THREE.Audio;
+  private _audioListener: THREE.AudioListener;
 
   constructor() {
     this._game = Game.getInstance();
@@ -12,6 +14,13 @@ class GameOverScreen implements Stage {
       1000
     );
     this._game.scene.background = new THREE.Color('red');
+
+    this._audioListener = new THREE.AudioListener();
+    this._audio = new THREE.Audio(this._audioListener);
+    this._game.camera.add(this._audioListener);
+    this._audio.setBuffer(Resources.getInstance().getMusic('death').audio);
+    this._game.scene.add(this._audio);
+    this._audio.play();
 
     this._gameOverText = document.getElementById(
       'gameover-text'
@@ -36,7 +45,7 @@ class GameOverScreen implements Stage {
     setTimeout(() => {
       this._gameOverText.innerText = '';
       this._game.stage = new Level();
-    }, 500);
+    }, 800);
   }
 
   update() {}

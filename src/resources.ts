@@ -7,7 +7,7 @@ class Resources {
   private _loadingScreen: LoadingScreen;
   private _debugMode: boolean = false;
   private _game: Game;
-  public readonly totalResources: number = 3;
+  public readonly totalResources: number = 4;
 
   constructor() {
     this._game = Game.getInstance();
@@ -28,6 +28,10 @@ class Resources {
     } else {
       this._addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
       this._addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
+      this._addToAudioLoader(
+        'assets/music/160907__raccoonanimator__cue-scratch.wav',
+        'death'
+      );
     }
     this._addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
   }

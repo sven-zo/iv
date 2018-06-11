@@ -85,7 +85,7 @@ class Resources {
         this._music = [];
         this._fonts = [];
         this._debugMode = false;
-        this.totalResources = 3;
+        this.totalResources = 4;
         this._game = Game.getInstance();
         this._debugMode = this._game.debugMode;
     }
@@ -101,6 +101,7 @@ class Resources {
         else {
             this._addToAudioLoader('assets/music/ElementarySD.mp3', 'loadingScreen');
             this._addToAudioLoader('assets/music/500480_Press-Start.mp3', 'mainMenu');
+            this._addToAudioLoader('assets/music/160907__raccoonanimator__cue-scratch.wav', 'death');
         }
         this._addToFontLoader('assets/fonts/Roboto_Italic.json', 'robotoItalic');
     }
@@ -226,6 +227,22 @@ class BoxObject extends GameObject {
         this.light.distance = distance;
     }
 }
+class BoxObjectWithLight extends BoxObject {
+    constructor(x, y, z, id, level) {
+        super(x, y, z, id, true, level);
+    }
+    notify(distance) {
+        this.light.distance = distance;
+    }
+}
+class BoxObjectWithoutLight extends BoxObject {
+    constructor(x, y, z, id, level) {
+        super(x, y, z, id, false, level);
+    }
+    notify(distance) {
+        this.light.distance = distance;
+    }
+}
 class Player extends GameObject {
     constructor(x, y, z) {
         super(Resources.getInstance().getFont('robotoItalic').geometry, new THREE.MeshBasicMaterial({ color: 0xffffff }), new THREE.Vector3(x, y, z));
@@ -295,6 +312,12 @@ class GameOverScreen {
         this._game.scene = new THREE.Scene();
         this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
         this._game.scene.background = new THREE.Color('red');
+        this._audioListener = new THREE.AudioListener();
+        this._audio = new THREE.Audio(this._audioListener);
+        this._game.camera.add(this._audioListener);
+        this._audio.setBuffer(Resources.getInstance().getMusic('death').audio);
+        this._game.scene.add(this._audio);
+        this._audio.play();
         this._gameOverText = document.getElementById('gameover-text');
         const n = Math.floor(Math.random() * 3);
         switch (n) {
@@ -314,7 +337,7 @@ class GameOverScreen {
         setTimeout(() => {
             this._gameOverText.innerText = '';
             this._game.stage = new Level();
-        }, 500);
+        }, 800);
     }
     update() { }
 }
@@ -350,6 +373,13 @@ class Level {
         this._game.scene.background = new THREE.Color('black');
         this._game.camera = new THREE.PerspectiveCamera(75, this._game.rendererWidth / this._game.rendererHeight, 0.1, 1000);
         this._game.camera.position.z = 10;
+        this._audioListener = new THREE.AudioListener();
+        this._game.camera.add(this._audioListener);
+        this._audio = new THREE.Audio(this._audioListener);
+        this._audio.setLoop(true);
+        this._audio.setBuffer(this._resources.getMusic('mainMenu').audio);
+        this._game.scene.add(this._audio);
+        this._audio.play();
         if (this._debugMode) {
             const axesHelper = new THREE.AxesHelper(5);
             this._game.scene.add(axesHelper);
@@ -396,7 +426,13 @@ class Level {
                         this._lightBlocksPerChunk--;
                     }
                 }
-                let box = new BoxObject(b.x, b.y, b.z, this._ids, light, this);
+                let box;
+                if (light) {
+                    box = new BoxObjectWithLight(b.x, b.y, b.z, this._ids, this);
+                }
+                else {
+                    box = new BoxObjectWithoutLight(b.x, b.y, b.z, this._ids, this);
+                }
                 this._level.push(box);
             });
         }
@@ -406,6 +442,7 @@ class Level {
         this._notifyLightBlocks(30);
     }
     _gameOver() {
+        this._audio.pause();
         this._game.stage = new GameOverScreen();
     }
     _collide() {
