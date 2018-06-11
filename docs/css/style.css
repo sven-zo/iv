@@ -30,6 +30,17 @@ body { margin: 0; }
   color: white;
 }
 
+#score {
+  font-size: 5vw;
+  font-family: 'Source Sans Pro', sans-serif;
+  font-weight: bolder;
+  font-style: italic;
+  color: white;
+  left: 10;
+  top: 10;
+  display: absolute;
+}
+
 .spinner {
   width: 40px;
   height: 40px;

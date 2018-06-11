@@ -8,11 +8,14 @@ class Level implements Stage, Subject {
   private _ids: number = 0;
   private _lightBlocksPerChunk: number = 0;
   private _observers: Observer[] = [];
+  private _scoreElem: HTMLDivElement;
 
   constructor() {
     this._game = Game.getInstance();
     this._resources = Resources.getInstance();
     this._debugMode = this._game.debugMode;
+
+    this._scoreElem = document.getElementById('score') as HTMLDivElement;
 
     this._setUpScene();
     this._setUpFirstChunk();
@@ -77,6 +80,10 @@ class Level implements Stage, Subject {
     });
   }
 
+  private _updateScore() {
+    this._scoreElem.innerText = Math.floor(this._player.position.x).toString();
+  }
+
   public update(): void {
     this._syncCameraAndPlayerPosition();
     this._removeOldChunks();
@@ -101,7 +108,8 @@ class Level implements Stage, Subject {
       });
     }
     this._player.update();
-    this._collide();
+    //this._collide();
+    this._updateScore();
     this._notifyLightBlocks(30);
   }
 

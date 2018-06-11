@@ -328,6 +328,7 @@ class Level {
         this._game = Game.getInstance();
         this._resources = Resources.getInstance();
         this._debugMode = this._game.debugMode;
+        this._scoreElem = document.getElementById('score');
         this._setUpScene();
         this._setUpFirstChunk();
     }
@@ -375,6 +376,9 @@ class Level {
             o.notify(distance);
         });
     }
+    _updateScore() {
+        this._scoreElem.innerText = Math.floor(this._player.position.x).toString();
+    }
     update() {
         this._syncCameraAndPlayerPosition();
         this._removeOldChunks();
@@ -397,7 +401,7 @@ class Level {
             });
         }
         this._player.update();
-        this._collide();
+        this._updateScore();
         this._notifyLightBlocks(30);
     }
     _gameOver() {
