@@ -236,7 +236,7 @@ class Player extends GameObject {
         Game.getInstance().scene.add(this._light);
     }
     _mouseHandler(event) {
-        this.position.y = -(event.clientY / window.innerHeight) * 10 + 5;
+        this.position.y = -(event.clientY / window.innerHeight) * 10 + 4.5;
     }
     _keydownHandler(event) {
         switch (event.key) {
@@ -401,6 +401,7 @@ class Level {
             });
         }
         this._player.update();
+        this._collide();
         this._updateScore();
         this._notifyLightBlocks(30);
     }

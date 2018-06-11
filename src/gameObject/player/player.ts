@@ -16,7 +16,7 @@ class Player extends GameObject {
   }
 
   private _mouseHandler(event: MouseEvent) {
-    this.position.y = -(event.clientY / window.innerHeight) * 10 + 5;
+    this.position.y = -(event.clientY / window.innerHeight) * 10 + 4.5;
   }
 
   private _keydownHandler(event: KeyboardEvent) {

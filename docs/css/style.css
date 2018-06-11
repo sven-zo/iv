@@ -36,9 +36,7 @@ body { margin: 0; }
   font-weight: bolder;
   font-style: italic;
   color: white;
-  left: 10;
-  top: 10;
-  display: absolute;
+  opacity: 0.8;
 }
 
 .spinner {

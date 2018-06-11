@@ -108,7 +108,7 @@ class Level implements Stage, Subject {
       });
     }
     this._player.update();
-    //this._collide();
+    this._collide();
     this._updateScore();
     this._notifyLightBlocks(30);
   }
