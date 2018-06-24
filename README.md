@@ -60,6 +60,10 @@ Sommige boxen in de game zijn lampen. Naar mate de speler vordert in het spel zu
 # Gameplay componenten
 ### De game werkt met Canvas en/of WebGL in plaats van DOM elementen
 Ik heb [Three.js](https://threejs.org/) gebruikt om de game in Canvas / WebGL te renderen.
+Bepaalde UI-elementen zijn wel in de DOM gerenderd, maar de game zelf draait in Canvas / WebGL.
+
+### De game gebruikt een externe library zoals hieronder genoemd
+Ik heb [Three.js](https://threejs.org/) gebruikt om de game in Canvas / WebGL te renderen.
 
 ### De game heeft interactief geluid en muziek
 Het loading screen heeft muziek die wegfade als het spel begint. Ook heb je muziek tijdens het spelen van de game. Als je doodgaat speelte er een interactief game over geluid.
