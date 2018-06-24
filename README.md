@@ -31,31 +31,95 @@ Ik heb het singleton pattern toegepast op de `Game` en `Resources` classes omdat
 
 - [Voorbeeld van dit patroon in de Game class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/game.ts#L83)
 - [Voorbeeld van dit patroon in de Resources class](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/resources.ts#L104)
+```typescript
+public static getInstance(): Resources {
+    if (!Resources._instance) {
+      this._instance = new Resources();
+    }
+    return this._instance;
+  }
+```
 
 # Polymorfisme
 Polymorfisme wordt toegepast met `GameObjects` en `BoxObject`.
 Meerdere classes zijn een `GameObject` zodat alles wat te maken heeft met collision en beweging al ingebouwd is. Zo hoef je niet elke keer dezelfde code te schrijven voor objecten die zich in het level bevinden.
 `BoxObjectWithLight` en `BoxObjectWithoutLight` zijn beide een `BoxObject`. Deze twee classes zijn om de boxen met lamp en de boxen zonder lamp te onderscheiden, en om de constructor te verkorten.
 
-- [BoxObjectWithoutLight is een BoxObject](https://github.com/sven-zo/iv/blob/master/src/gameObject/boxObjectWithoutLight.ts)
 - [Player is een GameObject](https://github.com/sven-zo/iv/blob/master/src/gameObject/player/player.ts)
+- [BoxObjectWithoutLight is een BoxObject](https://github.com/sven-zo/iv/blob/master/src/gameObject/boxObjectWithoutLight.ts)
+```typescript
+class BoxObjectWithoutLight extends BoxObject implements Observer {
+  constructor(x: number, y: number, z: number, id: number, level: Level) {
+    super(x, y, z, id, false, level);
+  }
+
+  public notify(distance: number): void {
+    this.light.distance = distance;
+  }
+}
+```
 
 # Strategy
 De `Stage`'s in de game zijn gemaakt volgens het strategy pattern. Dit is zodat er in runtime gewisseld kan worden tussen andere stages. Voorbeelden van stages zijn `Level` en `GameOverScreen`.
 
 - [Voorbeeld van dit patroon in de Game class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/game.ts#L63)
+```typescript
+public set stage(stage: Stage) {
+    this._stage = stage;
+  }
+```
 - [Stages worden aangeroepen in de game loop](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/game.ts#L74)
+```typescript
+if (this._stage) {
+      this._stage.update();
+    }
+ ```
 - [Voorbeeld van dit patroon in de GameOverScreen class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/stages/gameOverScreen.ts#L1)
+```typescript
+class GameOverScreen implements Stage { ...
+```
 - [Voorbeeld van dit patroon in de Stage interface.](https://github.com/sven-zo/iv/blob/master/src/stage.ts)
+```typescript
+interface Stage {
+  update(): void;
+}
+```
 
 # Observer
 Sommige boxen in de game zijn lampen. Naar mate de speler vordert in het spel zullen alle lampen dimmen. Dit is toegepast volgens het `Observer` pattern. `Level` is de subject, en `BoxObject` is de observer.
 
 - [Observer interface](https://github.com/sven-zo/iv/blob/master/src/observer.ts)
+```typescript
+interface Observer {
+  notify(distance: number): void;
+}
+```
 - [Subject interface](https://github.com/sven-zo/iv/blob/master/src/subject.ts)
+```typescript
+interface Subject {
+  _observers: Observer[];
+  ...
+```
 - [Voorbeeld van dit patroon in de Level class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/stages/level.ts#L166)
+```typescript
+public unsubscribe(observer: Observer): void {
+    this._observers = this._observers.filter(o => o !== observer);
+  }
+```
 - [Het notify'en van boxes in de Level class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/stages/level.ts#L88)
+```typescript
+private _notifyLightBlocks(distance: number): void {
+    this._observers.forEach(o => {
+      o.notify(distance);
+    });
+  }
+```
 - [Voorbeeld van dit patroon in de BoxObject class.](https://github.com/sven-zo/iv/blob/78bfe572eda9fd9ffbce3dc8fce0890eb9c615d3/src/gameObject/boxObject.ts#L43)
+```typescript
+public notify(distance: number): void {
+    this.light.distance = distance;
+  }
+```
 
 # Gameplay componenten
 ### De game werkt met Canvas en/of WebGL in plaats van DOM elementen
