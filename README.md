@@ -130,7 +130,7 @@ Bepaalde UI-elementen zijn wel in de DOM gerenderd, maar de game zelf draait in 
 Ik heb [Three.js](https://threejs.org/) gebruikt om de game in Canvas / WebGL te renderen.
 
 ### De game heeft interactief geluid en muziek
-Het loading screen heeft muziek die wegfade als het spel begint. Ook heb je muziek tijdens het spelen van de game. Als je doodgaat speelte er een interactief game over geluid.
+Het loading screen heeft muziek die wegfade als het spel begint. Ook heb je muziek tijdens het spelen van de game. Als je doodgaat speelt er een interactief game over geluid.
 
 
 ### De game heeft levels met een oplopende moeilijkheidsgraad.
